@@ -270,16 +270,16 @@ for bc in bays:
         frame(Wall("z", x_wall, out), bc - WIN // 2, WIN, AISLE_WIN_Y, c2(5), "window", part)
     for x_wall, out in ((-HALF_N, -1), (HALF_N - 1, 1)):
         frame(Wall("z", x_wall, out), bc - WIN // 2, WIN, CLER_WIN_Y, c2(8), "window", part)
-# Belfry openings on all four sides of both towers, with plum louvers inside
+# Belfry openings on all four sides of both towers, with plum louvers inside and a sill
 TL_Y, TL_H = c(56), c2(18)
 for sx in (-1, 1):
     x_mid = sx * (HALF_F - TW // 2)
     sides = ((-HALF_F, -1), (-(HALF_F - TW) - 1, 1)) if sx < 0 else ((HALF_F - TW, -1), (HALF_F - 1, 1))
     for off in (-c(4), c(4)):
         for wall in (FACADE, Wall("x", TW - 1, 1)):
-            frame(wall, x_mid + off - WIN // 2, WIN, TL_Y, TL_H, "window", "West front", fill="D", sill=False)
+            frame(wall, x_mid + off - WIN // 2, WIN, TL_Y, TL_H, "window", "West front", fill="D")
         for x_wall, out in sides:
-            frame(Wall("z", x_wall, out), TW // 2 + off - WIN // 2, WIN, TL_Y, TL_H, "window", "West front", fill="D", sill=False)
+            frame(Wall("z", x_wall, out), TW // 2 + off - WIN // 2, WIN, TL_Y, TL_H, "window", "West front", fill="D")
 
 # ---- 3) Flying buttresses with pinnacles ----
 z = Z_NAVE0 + BAY
@@ -341,6 +341,12 @@ for k in range(HALF_N - 1):
     for zz in range(FD + TW, Z_CH, 2):
         add_tile(-HALF_N + k, H_N + k, zz, 0, part_of(0, zz))           # left slope, +x towards the ridge
         add_tile(HALF_N - 2 - k, H_N + k, zz, 180, part_of(0, zz))
+# Transept gables: the end walls stop at the eaves, so close the triangle under the roof, row by row between the slopes
+for k in range(HALF_N - 1):
+    for x_end in (-HALF_T, HALF_T - 1):
+        for zz in range(Z_TR0 + k + 2, Z_TR1 - 2 - k):
+            if (x_end, H_N + k, zz) not in tile_cells:
+                vox.setdefault((x_end, H_N + k, zz), "S")
 # Aisles: lean-to, rows two cells apart, one layer up each (about 26 degrees)
 for k in range(AISLE_RISE):
     for zz in range(Z_NAVE0, Z_CH, 2):
@@ -634,7 +640,7 @@ for zc in range(int(math.floor((z_cross - W / 2) / CELL)), int(math.ceil((z_cros
 # outer face climbs from the ground to the tower platform (parapet gap). Where its flights pass the corner at the
 # facade lane or at the outer lane, level platforms branch off: the facade lane (between the towers too, once above
 # the gallery) and the back lane behind the tower (once above the aisle roof). One turn = 4.8 m between levels.
-C_TW = 0.35                                                # clearance to the walls (frames stick out 0.18 m)
+C_TW = 0.45                                                # clearance to the walls (sills stick out 0.39 m)
 X_OUT, X_IN, TWM = HALF_F * CELL, (HALF_F - TW) * CELL, TW * CELL
 front_z, back_z = -C_TW - W / 2, TWM + C_TW + W / 2
 lane_x = X_OUT + C_TW + W / 2                              # outer lane = inner side of the stair tower
@@ -934,22 +940,64 @@ for (bx, by, bz, sx, sy, sz) in (b for b in scaffold if len(b) == 6):    # brace
 print(f"scaffold cells inside bricks: {len(hits)} {sorted(set(hits))[:12]}")
 
 
-def order_key(name):
-    if name == "Spire":
-        return (5, 0, 0)
-    if name == "Drum":
-        return (4, 0, 0)
-    if name.startswith("Roof"):
-        return (3, 0, name)
-    part, lvl = name.split(" · Level ")
-    return (0, int(lvl), ["West front", "Nave", "Transept", "Choir"].index(part))
+# ---- Construction sites and sections ----
+# The game allows at most 8192 slots and 256 sections per construction site (ConstructionStateNetworkSynchronizer),
+# so the cathedral is built as several sites, like the town's own buildings. Prerequisites stay inside a part.
+PARTS = [("notredame-west", "Notre-Dame: West front", ("West front",)),
+         ("notredame-towers", "Notre-Dame: Bell towers", ("Bell towers",)),
+         ("notredame-nave", "Notre-Dame: Nave", ("Nave",)),
+         ("notredame-choir", "Notre-Dame: Transept and choir", ("Transept", "Choir")),
+         ("notredame-spire", "Notre-Dame: Drum and spire", ("Drum", "Spire"))]
 
 
-order = sorted(range(len(sections)), key=lambda i: order_key(sections[i]))
-remap = {old: new for new, old in enumerate(order)}
-sections = [sections[i] for i in order]
-for r in rows:
-    r[5] = remap[r[5]]
+def part_index(name):
+    base = name[len("Roof · "):] if name.startswith("Roof · ") else name.split(" · ")[0]
+    if base == "West front" and not (" · Level " in name and int(name.split(" · Level ")[1]) <= 4):
+        base = "Bell towers"                                # upper west front: its own site (slot limit)
+    return next(k for k, (_, _, keys) in enumerate(PARTS) if base in keys)
+
+
+# Sections like the town's own buildings: about 64 bricks each (every finished section is worth a skill point), cut
+# from thin height bands of 0.84 m and built from the bottom up, so a section can be finished at its own height.
+FINE_BAND, TARGET, MIN_BAND = 4, 64, 16          # cells per band, bricks per section, smaller bands join the next one
+part_of_row = [part_index(sections[r[5]]) for r in rows]
+band_of_row = [int(r[2] / 100 / CELL) // FINE_BAND for r in rows]
+fine = []                                         # (height, part, index, name, rows)
+for pi, (_, pname, _) in enumerate(PARTS):
+    short = pname.split(": ", 1)[1]
+    by_band = {}
+    for i in range(len(rows)):
+        if part_of_row[i] == pi:
+            by_band.setdefault(band_of_row[i], []).append(i)
+    groups, cur, cur_band = [], [], None
+    for b in sorted(by_band):
+        if not cur:
+            cur_band = b
+        cur += by_band[b]
+        if len(cur) >= MIN_BAND:
+            groups.append((cur_band, cur))
+            cur = []
+    if cur:
+        if groups:
+            groups[-1][1].extend(cur)
+        else:
+            groups.append((cur_band, cur))
+    for band, g in groups:
+        k = max(1, round(len(g) / TARGET))
+        gx = [rows[i][1] for i in g]
+        gz = [rows[i][3] for i in g]
+        along_x = max(gx) - min(gx) > max(gz) - min(gz)
+        g.sort(key=lambda i: (rows[i][1], rows[i][3]) if along_x else (rows[i][3], rows[i][1]))
+        h = band * FINE_BAND * CELL
+        for j in range(k):
+            name = f"{short} {h:.1f} m" + (f" · {j + 1}/{k}" if k > 1 else "")
+            fine.append((h, pi, j, name, g[j * len(g) // k:(j + 1) * len(g) // k]))
+fine.sort(key=lambda t: (t[0], t[1], t[2]))       # the whole cathedral rises from the bottom up
+sections = [t[3] for t in fine]
+part_of_section = [t[1] for t in fine]
+for si, t in enumerate(fine):
+    for i in t[4]:
+        rows[i][5] = si
 
 xs = [r[1] for r in rows]; zs = [r[3] for r in rows]; ys = [r[2] for r in rows]
 data = {
@@ -991,23 +1039,6 @@ BASE_H = 0.42
 HEIGHT = {"R4": 0.22, "SILL": 0.22, "JAMB": 0.42}
 PLINTH_PAIR, PLINTH_ONE, STEP_PIECE = "Bakery_Brick_2D1CAFD3", "Pharmacy_Brick_272A63CE", "Bakery_Brick_4018D562"
 ZC = (min(r[3] for r in rows) + max(r[3] for r in rows)) / 200
-# The game allows at most 8192 slots and 256 sections per construction site (ConstructionStateNetworkSynchronizer),
-# so the cathedral is built as several sites, like the town's own buildings. Prerequisites stay inside a part.
-PARTS = [("notredame-west", "Notre-Dame: West front", ("West front",)),
-         ("notredame-towers", "Notre-Dame: Bell towers", ("Bell towers",)),
-         ("notredame-nave", "Notre-Dame: Nave", ("Nave",)),
-         ("notredame-choir", "Notre-Dame: Transept and choir", ("Transept", "Choir")),
-         ("notredame-spire", "Notre-Dame: Drum and spire", ("Drum", "Spire"))]
-
-
-def part_index(name):
-    base = name[len("Roof · "):] if name.startswith("Roof · ") else name.split(" · ")[0]
-    if base == "West front" and not (" · Level " in name and int(name.split(" · Level ")[1]) <= 4):
-        base = "Bell towers"                                # upper west front: its own site (slot limit)
-    return next(k for k, (_, _, keys) in enumerate(PARTS) if base in keys)
-
-
-part_of_section = [part_index(name) for name in sections]
 items = []
 for r in rows:
     key = type_keys[r[0]]
@@ -1145,7 +1176,9 @@ blueprint_mod = {
 dst_mod = os.path.join(here, "..", "blueprints", "notredame.json")
 with open(dst_mod, "w", encoding="utf-8") as f:
     json.dump(blueprint_mod, f, separators=(",", ":"))
-print("parts:", [(sid, sum(1 for it in items if part_of_section[it[6]] == pi)) for pi, (sid, _, _) in enumerate(PARTS)])
+print("parts:", [(sid, sum(1 for it in items if part_of_section[it[6]] == pi), part_of_section.count(pi)) for pi, (sid, _, _) in enumerate(PARTS)])
+sizes = sorted(len(t[4]) for t in fine)
+print(f"sections: {len(sections)}, bricks per section min {sizes[0]}, median {sizes[len(sizes) // 2]}, max {sizes[-1]}")
 print(f"mod blueprint: {len(items)} bricks, {len(floating)} free to place (no supported neighbor) "
       f"{[(items[i][0], round(items[i][1], 2), round(items[i][2], 2), round(items[i][3], 2)) for i in floating[:8]]}, "
       f"plinth {len(cells)} cells + {len(ring)} step cells, {len(decor)} decor, {len(colliders)} colliders, "
