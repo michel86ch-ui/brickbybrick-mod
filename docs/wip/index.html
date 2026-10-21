@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notre-Dame in the Game</title>
+<meta name="description" content="Work in progress: first in-game test of a simplified Notre-Dame made of 24,291 bricks in Brick by Brick, with plinth, brick supply and a walkable scaffold.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+:root {
+  color-scheme: dark;
+  --paper: #11407a;
+  --paper-deep: #0b2f5c;
+  --grid: rgba(160, 205, 255, 0.13);
+  --line: rgba(170, 210, 255, 0.28);
+  --ink: #eef5ff;
+  --ink-dim: #a9c3e2;
+  --accent: #f4c95d;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "Barlow", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background-color: var(--paper);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ink);
+  font: 16px/1.55 var(--body);
+  padding: 24px max(16px, env(safe-area-inset-left, 0px)) 48px max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 22px; }
+.badge { justify-self: start; font: 700 14px/1 var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: #1c2433; background: var(--accent); padding: 7px 10px 6px; border-radius: 3px; }
+h1 { font: 700 clamp(34px, 6vw, 56px)/1 var(--display); margin: 0; letter-spacing: 0.01em; text-wrap: balance; }
+h1 small { display: block; font-size: 0.42em; font-weight: 500; color: var(--ink-dim); letter-spacing: 0.06em; margin-top: 8px; }
+h2 { font: 600 22px/1.2 var(--display); letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 8px; }
+p { margin: 0; max-width: 72ch; }
+a { color: var(--accent); }
+.panel { background: var(--paper-deep); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; }
+ul { margin: 0; padding-left: 20px; max-width: 72ch; }
+li + li { margin-top: 4px; }
+.gallery { display: grid; gap: 18px; }
+figure { margin: 0; background: var(--paper-deep); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+figure img { display: block; width: 100%; height: auto; }
+figcaption { padding: 10px 14px 12px; color: var(--ink-dim); font-size: 14.5px; }
+.links { display: flex; flex-wrap: wrap; gap: 10px 22px; }
+.note { color: var(--ink-dim); font-size: 14px; }
+@media (min-width: 900px) { .gallery { grid-template-columns: 1fr 1fr; } .gallery figure:first-child { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="badge">Work in progress</span>
+  <h1>Notre-Dame in the game<small>First in-game test of the mod building · 21 October 2026</small></h1>
+  <p>
+    The simplified Notre-Dame of the <a href="https://github.com/michel86ch-ui/brickbybrick-mod">Extra Buildings</a> mod, loaded into
+    Brick by Brick for the first time: <strong>24,291 brick slots</strong> in five construction sites (the game allows 8,192 per site),
+    a plinth, the brick supply next to the cathedral and a walkable scaffold up to the spire and the bell towers. Nothing is built yet:
+    every brick still has to be placed by hand.
+  </p>
+  <div class="links">
+    <a href="../notre-dame/">3D preview of the design (brick list, construction sections)</a>
+    <a href="https://github.com/michel86ch-ui/brickbybrick-mod">Source code on GitHub</a>
+  </div>
+
+  <section class="panel" aria-labelledby="known">
+    <h2 id="known">Known issues in this test</h2>
+    <ul>
+      <li>The scaffold shows the wrong texture (the game's scaffolding material is a texture atlas, the mod's plain boxes show all of it).</li>
+      <li>Some scaffold parts rest on roofs that are not built yet, so they hang in the air for now.</li>
+      <li>The five construction sites share one area, so their progress panels overlap.</li>
+    </ul>
+  </section>
+
+  <div class="gallery">
+    <figure>
+      <img src="notre-dame-wip-1.jpg" width="1920" height="1084" alt="Scaffold of the cathedral rising above a grey plinth, five blueprint boards in front of it">
+      <figcaption>The building site from the town square: plinth, five blueprint boards (one per construction site) and the scaffold.</figcaption>
+    </figure>
+    <figure>
+      <img src="notre-dame-wip-2.jpg" width="1920" height="1083" alt="View down from the scaffold onto stacked brick piles next to the plinth" loading="lazy">
+      <figcaption>View from the spire scaffold onto the brick supply: about 24,000 bricks stacked by type.</figcaption>
+    </figure>
+    <figure>
+      <img src="notre-dame-wip-3.jpg" width="1920" height="1077" alt="Plinth with a step all around, brick stacks on both sides, scaffold in the distance" loading="lazy">
+      <figcaption>The plinth with its step (the player climbs at most 0.30 m) and the brick stacks beside it.</figcaption>
+    </figure>
+    <figure>
+      <img src="notre-dame-wip-4.jpg" width="1920" height="1082" alt="Close-up of scaffold stair steps on the plinth" loading="lazy">
+      <figcaption>The first flight of a scaffold stair tower: steps of one brick height (0.21 m).</figcaption>
+    </figure>
+  </div>
+  <p class="note">Unofficial fan mod, not made by the game's developers. Screenshots from a test world.</p>
+</div>
+</body>
+</html>

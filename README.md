@@ -15,6 +15,14 @@ The goal is a simplified **Notre-Dame with roughly 25,000 bricks**: [3D preview 
 
 *Proof of concept for the [Notre-Dame](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/)'s round parts: the 311-brick round test tower, built to completion in the game.*
 
+## Work in progress: Notre-Dame in the game
+
+First in-game test (2026-10-21): the Notre-Dame loads with 24,291 brick slots in five construction sites, plinth, brick
+supply and the walkable scaffold. Still open: the scaffold texture, scaffold parts that rest on roofs not built yet, and
+overlapping progress panels. **[Screenshots of the test](https://michel86ch-ui.github.io/brickbybrick-mod/wip/)**
+
+[![Work in progress: the Notre-Dame building site in the game](docs/wip/notre-dame-wip-1.jpg)](https://michel86ch-ui.github.io/brickbybrick-mod/wip/)
+
 ## Status (2026-10-21)
 
 | Feature | Status |
@@ -27,7 +35,7 @@ The goal is a simplified **Notre-Dame with roughly 25,000 bricks**: [3D preview 
 | "Start Mod Map" / "Back to normal worlds" menu button with automatic restart (0.3.0) | confirmed in game |
 | Saving and reloading the mod world | confirmed in game (an older test world reopened with its finished garage) |
 | Round parts: 2x1 blocks along a circle (slightly overlapping), tilted pieces, a cone of roof-tile rings without flickering (0.3.1, round test tower with 311 bricks) | confirmed in game |
-| Notre-Dame: design with about 24,300 bricks, [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/) | design ready, not yet buildable in the game |
+| Notre-Dame: design with about 24,300 bricks, [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/) | work in progress: loads in the game as five construction sites, [screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/wip/) |
 
 ## Mod map: a separate world instead of the main world
 
