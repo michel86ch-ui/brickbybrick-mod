@@ -1,0 +1,482 @@
+[
+ {
+  "group": "bakery.anthracite",
+  "building": "Bakery",
+  "material": "Anthracite",
+  "color": "#454a4f",
+  "shapes": [
+   {
+    "asset": "Bakery_Brick_6ED2F14B",
+    "display": "2×2 Roof",
+    "size": [
+     0.43,
+     0.22,
+     0.42
+    ]
+   }
+  ]
+ },
+ {
+  "group": "bakery.grey",
+  "building": "Bakery",
+  "material": "Grey",
+  "color": "#c9d4d4",
+  "shapes": [
+   {
+    "asset": "Bakery_Brick_2D1CAFD3",
+    "display": "4×2×2 Block",
+    "size": [
+     0.42,
+     0.42,
+     0.84
+    ]
+   },
+   {
+    "asset": "Bakery_Brick_4018D562",
+    "display": "2×1×2 Block",
+    "size": [
+     0.42,
+     0.42,
+     0.21
+    ]
+   },
+   {
+    "asset": "Bakery_Brick_402F42D4",
+    "display": "2×2 Window",
+    "size": [
+     0.43,
+     0.22,
+     0.42
+    ]
+   },
+   {
+    "asset": "Bakery_Brick_ABDEE5CA",
+    "display": "Wide Block",
+    "size": [
+     0.263,
+     0.21,
+     0.42
+    ]
+   }
+  ]
+ },
+ {
+  "group": "bakery.yellow",
+  "building": "Bakery",
+  "material": "Yellow",
+  "color": "#cf9c61",
+  "shapes": [
+   {
+    "asset": "Bakery_Brick_E85E7A3A",
+    "display": "2×1 Block",
+    "size": [
+     0.42,
+     0.21,
+     0.21
+    ]
+   },
+   {
+    "asset": "Bakery_Brick_EBE67C24",
+    "display": "1×1 Block",
+    "size": [
+     0.21,
+     0.21,
+     0.21
+    ]
+   }
+  ]
+ },
+ {
+  "group": "factory.terracotta",
+  "building": "Factory",
+  "material": "Terracotta",
+  "color": "#9f4d49",
+  "shapes": [
+   {
+    "asset": "Factory_Brick_03FAB305",
+    "display": "1×1 Block",
+    "size": [
+     0.21,
+     0.21,
+     0.21
+    ]
+   },
+   {
+    "asset": "Factory_Brick_1687C5FC",
+    "display": "2×1 Block",
+    "size": [
+     0.42,
+     0.21,
+     0.21
+    ]
+   },
+   {
+    "asset": "Factory_Brick_7CB4833B",
+    "display": "2×2×2 Block",
+    "size": [
+     0.42,
+     0.42,
+     0.42
+    ]
+   },
+   {
+    "asset": "Factory_Brick_DB127285",
+    "display": "4×2×2 Block",
+    "size": [
+     0.84,
+     0.42,
+     0.42
+    ]
+   }
+  ]
+ },
+ {
+  "group": "house.terracotta",
+  "building": "House",
+  "material": "Terracotta",
+  "color": "#9f4d49",
+  "shapes": [
+   {
+    "asset": "House_Brick_083154C6",
+    "display": "3×3 L Roof",
+    "size": [
+     0.635,
+     0.221,
+     0.635
+    ]
+   },
+   {
+    "asset": "House_Brick_152B666F",
+    "display": "2×2 Roof Corner",
+    "size": [
+     0.425,
+     0.221,
+     0.425
+    ]
+   },
+   {
+    "asset": "House_Brick_36094303",
+    "display": "2×2 Roof",
+    "size": [
+     0.43,
+     0.221,
+     0.42
+    ]
+   }
+  ]
+ },
+ {
+  "group": "house.turquoise",
+  "building": "House",
+  "material": "Turquoise",
+  "color": "#6fb4a2",
+  "shapes": [
+   {
+    "asset": "House_Brick_41DF8BC6",
+    "display": "2×1 Block",
+    "size": [
+     0.21,
+     0.21,
+     0.42
+    ]
+   },
+   {
+    "asset": "House_Brick_49D2AD69",
+    "display": "1×1 Block",
+    "size": [
+     0.21,
+     0.21,
+     0.21
+    ]
+   }
+  ]
+ },
+ {
+  "group": "library.beige",
+  "building": "Library",
+  "material": "Beige",
+  "color": "#e2ce9d",
+  "shapes": [
+   {
+    "asset": "LibraryNew_Brick_4B9D4C0B",
+    "display": "Long Block",
+    "size": [
+     0.528,
+     0.21,
+     0.41
+    ]
+   },
+   {
+    "asset": "LibraryNew_Brick_63EB4F8F",
+    "display": "Short Block",
+    "size": [
+     0.28,
+     0.21,
+     0.294
+    ]
+   },
+   {
+    "asset": "LibraryNew_Brick_D800AC09",
+    "display": "1×1 Block",
+    "size": [
+     0.21,
+     0.21,
+     0.21
+    ]
+   },
+   {
+    "asset": "LibraryNew_Brick_FEB8053A",
+    "display": "2×1 Block",
+    "size": [
+     0.21,
+     0.21,
+     0.42
+    ]
+   }
+  ]
+ },
+ {
+  "group": "library.green",
+  "building": "Library",
+  "material": "Green",
+  "color": "#5faf58",
+  "shapes": [
+   {
+    "asset": "LibraryNew_Brick_0A9721FF",
+    "display": "Long Block",
+    "size": [
+     0.283,
+     0.21,
+     0.519
+    ]
+   },
+   {
+    "asset": "LibraryNew_Brick_57FA994A",
+    "display": "Short Block",
+    "size": [
+     0.294,
+     0.21,
+     0.28
+    ]
+   }
+  ]
+ },
+ {
+  "group": "library.grey",
+  "building": "Library",
+  "material": "Grey",
+  "color": "#c9d4d4",
+  "shapes": [
+   {
+    "asset": "LibraryNew_Brick_2CFC3612",
+    "display": "Upright Block",
+    "size": [
+     0.252,
+     0.42,
+     0.44
+    ]
+   },
+   {
+    "asset": "LibraryNew_Brick_71C93DDA",
+    "display": "Sloped Block",
+    "size": [
+     0.472,
+     0.22,
+     0.503
+    ]
+   },
+   {
+    "asset": "LibraryNew_Brick_A65D94A9",
+    "display": "Frame Block",
+    "size": [
+     0.534,
+     0.21,
+     0.543
+    ]
+   }
+  ]
+ },
+ {
+  "group": "library.terracotta",
+  "building": "Library",
+  "material": "Terracotta",
+  "color": "#9f4d49",
+  "shapes": [
+   {
+    "asset": "LibraryNew_Brick_0D4446D5",
+    "display": "Tower Roof A",
+    "size": [
+     0.763,
+     0.753,
+     0.582
+    ]
+   },
+   {
+    "asset": "LibraryNew_Brick_22E66AAC",
+    "display": "Tower Roof B",
+    "size": [
+     0.658,
+     0.753,
+     0.654
+    ]
+   },
+   {
+    "asset": "LibraryNew_Brick_36DCB2F1",
+    "display": "4×4 Roof Corner",
+    "size": [
+     0.842,
+     0.22,
+     0.845
+    ]
+   },
+   {
+    "asset": "LibraryNew_Brick_599C7CCF",
+    "display": "Tower Roof C",
+    "size": [
+     0.648,
+     0.753,
+     0.69
+    ]
+   },
+   {
+    "asset": "LibraryNew_Brick_6CBD2F09",
+    "display": "Tower Roof D",
+    "size": [
+     0.527,
+     0.753,
+     0.61
+    ]
+   },
+   {
+    "asset": "LibraryNew_Brick_7DC3B6C3",
+    "display": "3×3 Roof Corner",
+    "size": [
+     0.635,
+     0.22,
+     0.634
+    ]
+   }
+  ]
+ },
+ {
+  "group": "pharmacy.blue",
+  "building": "Pharmacy",
+  "material": "Blue",
+  "color": "#5e8bb0",
+  "shapes": [
+   {
+    "asset": "Pharmacy_Brick_06A152F5",
+    "display": "2×1 Block",
+    "size": [
+     0.42,
+     0.21,
+     0.21
+    ]
+   },
+   {
+    "asset": "Pharmacy_Brick_169A37B3",
+    "display": "1×1 Block",
+    "size": [
+     0.21,
+     0.21,
+     0.21
+    ]
+   }
+  ]
+ },
+ {
+  "group": "pharmacy.grey",
+  "building": "Pharmacy",
+  "material": "Grey",
+  "color": "#c9d4d4",
+  "shapes": [
+   {
+    "asset": "Pharmacy_Brick_272A63CE",
+    "display": "2×2×2 Block",
+    "size": [
+     0.42,
+     0.42,
+     0.42
+    ]
+   }
+  ]
+ },
+ {
+  "group": "tavern.anthracite",
+  "building": "Tavern",
+  "material": "Anthracite",
+  "color": "#454a4f",
+  "shapes": [
+   {
+    "asset": "Tavern_Brick_868BAF61",
+    "display": "4×4 Roof Corner",
+    "size": [
+     0.845,
+     0.22,
+     0.842
+    ]
+   },
+   {
+    "asset": "Tavern_Brick_BA928197",
+    "display": "3×3 Roof Corner",
+    "size": [
+     0.634,
+     0.22,
+     0.635
+    ]
+   }
+  ]
+ },
+ {
+  "group": "tavern.plum",
+  "building": "Tavern",
+  "material": "Plum",
+  "color": "#673e5c",
+  "shapes": [
+   {
+    "asset": "Tavern_Brick_9DEF6649",
+    "display": "2×1 Block",
+    "size": [
+     0.21,
+     0.21,
+     0.42
+    ]
+   },
+   {
+    "asset": "Tavern_Brick_CCE9C299",
+    "display": "1×1 Block",
+    "size": [
+     0.21,
+     0.21,
+     0.21
+    ]
+   }
+  ]
+ },
+ {
+  "group": "tower.green",
+  "building": "Tower",
+  "material": "Green",
+  "color": "#5faf58",
+  "shapes": [
+   {
+    "asset": "Tower_Brick_9AB8D122",
+    "display": "1×1 Block",
+    "size": [
+     0.21,
+     0.21,
+     0.21
+    ]
+   },
+   {
+    "asset": "Tower_Brick_EDE7B940",
+    "display": "2×1 Block",
+    "size": [
+     0.21,
+     0.21,
+     0.42
+    ]
+   }
+  ]
+ }
+]

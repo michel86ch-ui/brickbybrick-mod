@@ -3,7 +3,7 @@
 A mod for *Brick by Brick: Tidy Up the Small Town!* (Steam). It adds extra buildings to the game from a blueprint –
 with real brick slots, holograms, construction sections, a blueprint board, a completion message and a build replay,
 just like the original buildings. Test buildings so far: a **garage with 191 bricks** and a **round tower with 311 bricks**.
-The goal is a simplified **Notre-Dame with roughly 25,000 bricks**.
+The goal is a simplified **Notre-Dame with roughly 25,000 bricks**: [3D preview with brick list and construction sections](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/).
 
 > Unofficial fan mod, not made by the game's developers. This repository contains no game files.
 
@@ -13,7 +13,7 @@ The goal is a simplified **Notre-Dame with roughly 25,000 bricks**.
 
 ![Proof of concept for the round parts: tower of 2x1 blocks along a circle, framed pointed window, cone of roof-tile rings](docs/modmapBrickByBrick3.png)
 
-*Proof of concept for the Notre-Dame's round parts: the 311-brick round test tower, built to completion in the game.*
+*Proof of concept for the [Notre-Dame](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/)'s round parts: the 311-brick round test tower, built to completion in the game.*
 
 ## Status (2026-10-21)
 
@@ -27,7 +27,7 @@ The goal is a simplified **Notre-Dame with roughly 25,000 bricks**.
 | "Start Mod Map" / "Back to normal worlds" menu button with automatic restart (0.3.0) | confirmed in game |
 | Saving and reloading the mod world | confirmed in game (an older test world reopened with its finished garage) |
 | Round parts: 2x1 blocks along a circle (slightly overlapping), tilted pieces, a cone of roof-tile rings without flickering (0.3.1, round test tower with 311 bricks) | confirmed in game |
-| Notre-Dame | planned |
+| Notre-Dame: design with about 24,300 bricks, [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/) | design ready, not yet buildable in the game |
 
 ## Mod map: a separate world instead of the main world
 
@@ -65,6 +65,8 @@ cd mods\ExtraBuildings
 dotnet build -c Release -p:DeployToGame=true     (copies the DLL + blueprints\*.json into the game)
 py tools\gen_garage.py                            (regenerate the garage blueprint)
 py tools\gen_roundtest.py                         (regenerate the round test tower)
+py tools\gen_notredame.py 1.2                     (Notre-Dame design, scale 1.2)
+py tools\build_preview.py                         (3D preview page -> docs\notre-dame\index.html)
 ```
 
 The project references the DLLs directly from the game folder (adjust `GameDir` in the `.csproj` if the game is
@@ -75,7 +77,7 @@ installed elsewhere).
 | [mods/ExtraBuildings](mods/ExtraBuildings/) | The mod (C#, BepInEx 5 / HarmonyX) |
 | [tools](tools/) | Blueprint generators (Python) |
 | [blueprints](blueprints/) | Generated blueprints (JSON) |
-| [docs](docs/) | Screenshots |
+| [docs](docs/) | Screenshots and the [Notre-Dame 3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/) (GitHub Pages) |
 
 ## How the game builds its buildings
 
