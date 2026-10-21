@@ -113,8 +113,8 @@ def inner_wall(axis, fixed, u0, u1, y1):
 
 X_TW = HALF_F - TW                                     # inner wall of the right tower; the left one is -X_TW - 1
 for xw in (HALF_N - 1, -HALF_N):                       # nave and choir arcades, ending in the crossing piers
-    inner_wall("z", xw, Z_NAVE0, Z_TR0, H_A)
-    inner_wall("z", xw, Z_TR1 - 1, Z_CH - 1, H_A)
+    inner_wall("z", xw, Z_NAVE0, Z_TR0 + 1, H_A)       # (two cells deep, so they take 2x1 blocks, not 1x1)
+    inner_wall("z", xw, Z_TR1 - 2, Z_CH - 1, H_A)
 for zw in (Z_TR0, Z_TR1 - 1):                          # transept arcades over the aisles
     inner_wall("x", zw, HALF_N - 1, HALF_B - 1, H_A)
     inner_wall("x", zw, -HALF_B, -HALF_N, H_A)
@@ -338,8 +338,8 @@ BACK = Wall("x", TW - 1, -1)                           # jambs stick out into th
 arch(BACK, -X_TW, X_TW - 1, H_N, "West front")         # hall -> nave
 for a, b in ((HALF_N, HALF_F - 3), mirror(HALF_N, HALF_F - 3)):   # towers -> aisles
     arch(BACK, a, b, H_A, "West front")
-for x_wall, out in ((X_TW, 1), (-X_TW - 1, -1)):      # hall -> towers
-    arch(Wall("z", x_wall, out), 2, TW - 3, H_F // 2 + 1, "West front")
+for x_wall, out in ((X_TW, 1), (-X_TW - 1, -1)):      # hall -> towers, jambs right at the front and back wall
+    arch(Wall("z", x_wall, out), 1, TW - 2, H_F // 2 + 1, "West front")   # (a one-cell stub there would be all 1x1)
 
 # ---- 3) Flying buttresses with pinnacles ----
 z = Z_NAVE0 + BAY
@@ -929,6 +929,7 @@ def pack_layer(cells, y, below, joints_below):
     layer = set(cells)
     first = "x" if y % 2 == 0 else "z"
     mate, locked = {}, set()
+    reveal = set()                 # 1x1 at an open wall end (window, arch, door): it shifts the joints, keep it
 
     def same(a, w):
         return w in layer and vox[w] == vox[a]
@@ -943,6 +944,10 @@ def pack_layer(cells, y, below, joints_below):
     def axes(a):
         x, _, z = a
         return (same(a, (x + 1, y, z)) + same(a, (x - 1, y, z)), same(a, (x, y, z + 1)) + same(a, (x, y, z - 1)))
+
+    def wall_end(a, d):
+        """The run along d really ends at a (window, arch, door): no wall goes on across it, unlike at a corner."""
+        return axes(a)[1 if d == "x" else 0] == 0
 
     for cl in cells:                                           # 1) corners, junctions, solid blocks
         if cl in mate:
@@ -978,12 +983,18 @@ def pack_layer(cells, y, below, joints_below):
         wall_before = before in layer and vox[before] == m        # a corner block was laid there
         wall_after = after in layer and vox[after] == m
         lead = 0 if wall_before else (len(run) % 2 if wall_after else ((start[0] if d == "x" else start[2]) + y) % 2)
+        if len(run) == 2 and not (wall_before or wall_after):
+            lead = 0                                            # one block between two openings: no joint to shift
         rest = run[lead:]
+        if lead and wall_end(run[0], d):
+            reveal.add(run[0])
         if wall_before and wall_after and len(rest) % 2:
             k = (len(rest) // 2) & ~1                           # the 1x1 in the middle, pairs on both sides
             pairs = [(rest[j], rest[j + 1]) for j in range(0, k, 2)] + [(rest[j], rest[j + 1]) for j in range(k + 1, len(rest) - 1, 2)]
         else:
             pairs = [(rest[j], rest[j + 1]) for j in range(0, len(rest) - 1, 2)]
+            if len(rest) % 2 and wall_end(rest[-1], d):
+                reveal.add(rest[-1])
         for a, b in pairs:
             match(a, b)
 
@@ -991,15 +1002,15 @@ def pack_layer(cells, y, below, joints_below):
         x, _, z = a
         return [w for w in ((x + 1, y, z), (x - 1, y, z), (x, y, z + 1), (x, y, z - 1)) if same(a, w) and w not in locked]
 
-    for u in cells:                                            # 3) augmenting paths
-        if u in mate:
+    for u in cells:                                            # 3) augmenting paths (never through a reveal 1x1)
+        if u in mate or u in reveal:
             continue
         prev, queue, found = {u: None}, [u], None
         while queue and found is None:
             nxt = []
             for a in queue:
                 for w in neighbours(a):
-                    if w in prev:
+                    if w in prev or w in reveal:
                         continue
                     prev[w] = a
                     if w not in mate:

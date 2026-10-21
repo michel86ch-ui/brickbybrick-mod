@@ -1,4 +1,4 @@
-# ExtraBuildings 0.5.0
+# ExtraBuildings 0.6.0
 
 Extra construction sites from a blueprint (JSON). Active only in a **mod-map session** (`ModMapEnabled = true`);
 every world choice then opens the mod world (default `singleplayer-4`). In a normal session the mod does nothing and
@@ -34,6 +34,9 @@ locks the mod world. A button top left in the main menu switches the mode and re
 14. `Showcase = true`: instead of construction sites the blueprint stands finished, one mesh with a walkable
     `MeshCollider` per section, on its plinth, without scaffold. The original sites are hidden and every installer is
     left empty, so the world keeps no building progress. For checking a design in the game.
+15. Start skill points: a mod world whose shared progression was never changed (`ProgressionService.Revision` 0, saved
+    with the world) gets `StartSkillPoints` through the game's own `GrantCurrencyForDevelopment` (host only). The
+    grant raises the revision, so it happens once per world; existing worlds keep what they have.
 
 ### Scaffold
 
@@ -48,6 +51,7 @@ boxes (braces) are visuals only.
 |---|---|---|
 | General / ModMapEnabled | false | true = start the game as mod map (takes effect at the next start) |
 | General / RemoveVanillaBuildings | true | Mod map only: remove the seven original buildings and their bricks |
+| General / StartSkillPoints | 20 | Mod map only: skill points a new mod world starts with (0 = like the base game) |
 | General / Showcase | false | Mod map only: the blueprint as a finished building instead of construction sites (no building progress) |
 | General / World | singleplayer-4 | World slot of the mod map |
 | General / Blueprint | garage.json | File in the plugin folder (`garage.json`, `roundtest.json`, `notredame.json`) |
@@ -90,8 +94,8 @@ prerequisites: any piece whose top carries the brick within 4 cm and 0.45 m.
 
 ## Notre-Dame (notredame.json, from `tools\gen_notredame.py 1.2`)
 
-26,092 bricks in 410 sections and five construction sites: west front 4,896, bell towers 4,551, nave 7,332, transept
-and choir 8,012, drum and spire 1,301. Sections are cut like the town's own buildings, about 64 bricks each (the game
+26,462 bricks in 413 sections and five construction sites: west front 4,870, bell towers 4,825, nave 7,439, transept
+and choir 8,027, drum and spire 1,301. Sections are cut like the town's own buildings, about 64 bricks each (the game
 pays one skill point per finished section, ten per finished building, plus milestones for placed bricks), from height
 bands of 0.84 m built from the bottom up, so every section can be finished at its own height.
 
@@ -102,8 +106,11 @@ platforms, the ceiling of the hall) and the flying buttresses span free. A wall 
 its 8 neighbours in the layer is outside, so two walls meeting in an inner corner share their corner block.
 
 Walls are laid in running bond with bonded corners: at every corner, junction and pier the 2x1 block lies across the
-one below, and a 1x1 block is only used where a wall has an odd length, at an opening (1,356 of 18,087 wall blocks,
-10 of them at corners; 98.5 % of the corner layers alternate). Prerequisites: a brick needs a brick of its part that
+one below. A 1x1 block sits where a wall ends at an opening, in every other course, so the joints shift like half
+bricks at a real reveal (also in piers between two windows), where a wall has an odd length, or where a cell has no
+neighbour; arch jambs stand right against the next wall, so no one-cell stubs are left (2,148 of 18,453 wall blocks,
+1,435 of them at openings, 7 at corners; 99.5 % of the corner layers alternate; 12.5 % of the vertical joints sit
+on the joint below). Prerequisites: a brick needs a brick of its part that
 carries it; a brick without one (slabs, lintels over openings) needs a neighbour in the same layer that is itself
 connected to a carried brick, so layers grow from their supported edge like in the original buildings. No brick is
 free to place.
@@ -132,7 +139,10 @@ where they overlap (flickering).
   a flickering walkway where the bridge to the spire scaffold crossed the tower lanes. Fixed since (arcades, 8-neighbour
   shell, scaffold rework, that bridge removed, no scaffold in the showcase).
 - 0.5.0 showcase after the rework: confirmed in game (screenshots of the west front, the choir side, the nave arcades
-  and the crossing). The reworked scaffold and building in normal mode: **not yet tested in game.**
+  and the crossing).
+- 0.5.0 building in normal mode: bricks snap in, sections finish, a skill point is earned. Seen: a column of 1x1
+  beside an arch jamb and stacked joints in the piers between the aisle windows.
+- 0.6.0: those two fixed (packing above), start skill points. **Not yet tested in game.**
 
 ## Open
 

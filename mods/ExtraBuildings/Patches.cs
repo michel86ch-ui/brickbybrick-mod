@@ -6,6 +6,7 @@ using MultiplayerTemplate.Bootstrap;
 using MultiplayerTemplate.Construction;
 using MultiplayerTemplate.Game.Scenes;
 using MultiplayerTemplate.Player;
+using MultiplayerTemplate.Progression;
 using UnityEngine;
 
 namespace ExtraBuildings
@@ -156,6 +157,49 @@ namespace ExtraBuildings
                 Plugin.Log.LogDebug("ConstructionSceneInstaller.OnSceneEnterAsync done.");
             }
             return __exception;
+        }
+    }
+
+    /// <summary>Remembers the game's progression service for <see cref="StartPoints"/>.</summary>
+    [HarmonyPatch(typeof(ProgressionService), MethodType.Constructor, typeof(ProgressionDefinitionCatalog), typeof(IProgressionAuthority))]
+    internal static class ProgressionServicePatch
+    {
+        private static void Postfix(ProgressionService __instance)
+        {
+            StartPoints.Service = __instance;
+        }
+    }
+
+    /// <summary>
+    /// A new mod world starts with the configured skill points. New = its shared progression was never changed (revision 0:
+    /// no brick placed, no point earned or spent; the revision is saved with the world). The grant itself raises the
+    /// revision, so it happens once per world. It uses the game's own currency grant, which only the host may call; until
+    /// the host runs (main menu, loading) it is retried once a second.
+    /// </summary>
+    internal static class StartPoints
+    {
+        internal static ProgressionService Service;
+        private static float nextTry;
+
+        internal static void Tick()
+        {
+            int amount = Plugin.StartSkillPoints.Value;
+            if (!Plugin.ModMapSession || amount <= 0 || Service == null || Service.Revision != 0 || Time.unscaledTime < nextTry)
+            {
+                return;
+            }
+            nextTry = Time.unscaledTime + 1f;
+            ProgressionCommandResult result = Service.GrantCurrencyForDevelopment("skill-point", amount);
+            if (result.Succeeded)
+            {
+                Plugin.Log.LogInfo($"New mod world: {amount} start skill points granted.");
+                Plugin.Toast($"New mod world: {amount} skill points to start with.");
+            }
+            else if (result.Status != ProgressionCommandStatus.NotAuthoritative)
+            {
+                Plugin.Log.LogWarning($"Start skill points not granted: {result.Status} {result.Message}");
+                Service = null;
+            }
         }
     }
 }

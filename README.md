@@ -17,7 +17,7 @@ The goal is a simplified **Notre-Dame with roughly 26,000 bricks**: [3D preview 
 
 ## Notre-Dame in the game
 
-The simplified Notre-Dame with 26,092 bricks, shown finished in the game with the mod's showcase mode (0.5.0): west
+The simplified Notre-Dame with about 26,500 bricks, shown finished in the game with the mod's showcase mode (0.5.0): west
 front with bell towers, round choir, spire over the crossing, and inside arcades of pointed arches that carry the upper
 walls. **[More screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/)**
 
@@ -37,8 +37,9 @@ walls. **[More screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/sho
 | "Start Mod Map" / "Back to normal worlds" menu button with automatic restart (0.3.0) | confirmed in game |
 | Saving and reloading the mod world | confirmed in game (an older test world reopened with its finished garage) |
 | Round parts: 2x1 blocks along a circle (slightly overlapping), tilted pieces, a cone of roof-tile rings without flickering (0.3.1, round test tower with 311 bricks) | confirmed in game |
-| Notre-Dame with 26,092 bricks, [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/): loads as five construction sites (0.4.0), shown finished in showcase mode (0.5.0) | confirmed in game, [screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/) |
-| Notre-Dame: building it brick by brick, reworked scaffold (0.5.0) | not yet tested |
+| Notre-Dame with about 26,500 bricks, [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/): loads as five construction sites (0.4.0), shown finished in showcase mode (0.5.0) | confirmed in game, [screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/) |
+| Notre-Dame: building it brick by brick: bricks snap in, sections finish, skill points are earned (0.5.0) | confirmed in game |
+| Notre-Dame: improved brick bond, start skill points for a new mod world (0.6.0); a complete build | not yet tested |
 
 ## Mod map: a separate world instead of the main world
 
@@ -61,15 +62,19 @@ that already has bricks on it: they would stay behind at the old place. Delete t
 
 ## Installation
 
-1. Download **[BrickByBrick-ExtraBuildings-0.5.0.zip](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest)**
+1. Download **[BrickByBrick-ExtraBuildings-0.6.0.zip](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest)**
    and unzip everything into the game folder, so that `winhttp.dll` sits next to `BrickByBrick.exe`
    (Steam: right-click the game > Manage > Browse local files).
 2. Start the game and click **Start Mod Map** top left in the main menu. The game restarts.
 3. **Important: create a new save in slot 4.** The Notre-Dame is built in that world only. Slot 4 must be empty – an
    existing world there would be opened as the mod world.
 
-Back to your own worlds: **Back to normal worlds** in the main menu. The ZIP contains BepInEx 5.4.23.5 (unmodified),
-the mod with its blueprints and a ready config.
+Back to your own worlds: **Back to normal worlds** in the main menu. A new mod world starts with 20 skill points
+(`StartSkillPoints` in `BepInEx\config\michel.brickbybrick.extrabuildings.cfg`, 0 = like the base game). The ZIP
+contains BepInEx 5.4.23.5 (unmodified), the mod with its blueprints and a ready config.
+
+Updating from 0.5.0: the Notre-Dame blueprint changed, so start a new save in slot 4 (a world built with 0.5.0 does
+not fit it).
 
 Uninstall: delete `winhttp.dll`, `doorstop_config.ini`, `.doorstop_version`, `changelog.txt`,
 `ExtraBuildings-README.txt` and the `BepInEx` folder in the game folder. The game itself is not modified.

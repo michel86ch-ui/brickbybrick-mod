@@ -18,7 +18,7 @@ namespace ExtraBuildings
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Guid = "michel.brickbybrick.extrabuildings";
-        public const string Version = "0.5.0";
+        public const string Version = "0.6.0";
         private const string SteamAppId = "5228920";
 
         internal static ManualLogSource Log;
@@ -28,6 +28,7 @@ namespace ExtraBuildings
         internal static ConfigEntry<bool> ModMapActive;
         internal static ConfigEntry<bool> RemoveVanilla;
         internal static ConfigEntry<bool> Showcase;
+        internal static ConfigEntry<int> StartSkillPoints;
         private static Plugin instance;
         private static bool restarting;
         internal static ConfigEntry<string> TargetSlot;
@@ -53,6 +54,9 @@ namespace ExtraBuildings
             ModMapActive = Config.Bind("General", "ModMapEnabled", false,
                 "true = the game starts as mod map: extra buildings are injected and every world choice opens the mod world. " +
                 "false = mod inactive, the mod world is locked. Takes effect at the next game start.");
+            StartSkillPoints = Config.Bind("General", "StartSkillPoints", 20,
+                "Mod map only: skill points a new mod world starts with (0 = none, like the base game). Granted once, while " +
+                "the world has no progress yet; existing worlds keep what they have.");
             TargetSlot = Config.Bind("General", "World", "singleplayer-4",
                 "World slot of the mod map (singleplayer-1 to singleplayer-4). Other worlds stay unchanged.");
             ModMapSession = ModMapActive.Value;
@@ -70,6 +74,7 @@ namespace ExtraBuildings
 
         private void Update()
         {
+            StartPoints.Tick();
             if (!MoveKey.Value.IsDown())
             {
                 return;
