@@ -86,10 +86,13 @@ prerequisites: any piece whose top carries the brick within 4 cm and 0.45 m.
 
 ## Notre-Dame (notredame.json, from `tools\gen_notredame.py 1.2`)
 
-24,385 bricks in 386 sections and five construction sites: west front 4,178, bell towers 4,939, nave 6,572, transept
-and choir 7,395, drum and spire 1,301. Sections are cut like the town's own buildings, about 64 bricks each (the game
+23,590 bricks in 376 sections and five construction sites: west front 4,035, bell towers 4,629, nave 6,428, transept
+and choir 7,197, drum and spire 1,301. Sections are cut like the town's own buildings, about 64 bricks each (the game
 pays one skill point per finished section, ten per finished building, plus milestones for placed bricks), from height
-bands of 0.84 m built from the bottom up, so every section can be finished at its own height. Prerequisites: a brick needs a brick of its part that carries it; a brick
+bands of 0.84 m built from the bottom up, so every section can be finished at its own height. Walls are laid in
+running bond with bonded corners: at every corner, junction and pier the 2x1 block lies across the one below, and a
+1x1 block is only used where a wall has an odd length, at an opening (1,080 of 16,492 wall blocks, 4 of them at
+corners; 99.7 % of the corner layers alternate). Prerequisites: a brick needs a brick of its part that carries it; a brick
 without one (slabs over the hollow towers, lintels over openings, walls rising above the aisles) needs a neighbour in
 the same layer that is itself connected to a carried brick, so layers grow from their supported edge like in the
 original buildings. 76 bricks stay free to place (the lowest clerestory row, whose neighbours belong to other parts).

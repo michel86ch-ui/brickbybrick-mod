@@ -829,39 +829,195 @@ for sx in (1, -1):
         y0 = max(fa, fb) + 0.3
         braces((xa, bz_out + 0.06), (xb, bz_out + 0.06), y0, back_lv[-1])
 
-# ---- 7) Brick packing of the voxel walls: 2x1 in running bond, leftovers 1x1 ----
-assigned = set()
-bricks = []
-for y in sorted({k[1] for k in vox}):
-    layer = sorted((k for k in vox if k[1] == y), key=lambda k: (k[2], k[0]))
-    for v in layer:
-        if v in assigned:
+# ---- 7) Brick packing: 2x1 blocks in running bond with bonded corners ----
+# Wanted pattern first: at a corner, a junction or inside a solid block (piers, pinnacles) the 2x1 block lies across
+# the block below (first layer: even layers along x, odd along z), so corners interlock like real masonry. Straight
+# runs continue from their corner; a run without a corner (between openings) follows the layer parity, so the joints
+# shift by one cell from layer to layer. Then augmenting paths over neighbouring cells of the same material turn as many
+# leftover 1x1 cells into 2x1 blocks as the shape allows, without turning the corner blocks of thin walls; a 1x1 stays
+# at an open wall end (an opening). Every layer is laid forwards and backwards; the one with fewer 1x1, then fewer
+# vertical joints right above a joint of the layer below wins (that makes the joints of piers alternate).
+
+
+def pack_layer(cells, y, below, joints_below):
+    layer = set(cells)
+    first = "x" if y % 2 == 0 else "z"
+    mate, locked = {}, set()
+
+    def same(a, w):
+        return w in layer and vox[w] == vox[a]
+
+    def free_same(a, w):
+        return same(a, w) and w not in mate
+
+    def match(a, b):
+        mate[a] = b
+        mate[b] = a
+
+    def axes(a):
+        x, _, z = a
+        return (same(a, (x + 1, y, z)) + same(a, (x - 1, y, z)), same(a, (x, y, z + 1)) + same(a, (x, y, z - 1)))
+
+    for cl in cells:                                           # 1) corners, junctions, solid blocks
+        if cl in mate:
             continue
-        x, _, z = v
-        m = vox[v]
-        pref = (("z", 0, 1), ("x", 1, 0)) if y % 2 == 0 else (("x", 1, 0), ("z", 0, 1))
-        for d, dx, dz in pref:
-            if ((z if d == "z" else x) + y) % 2 != 0:
-                continue
-            w = (x + dx, y, z + dz)
-            if w in vox and w not in assigned and vox[w] == m:
-                assigned.update((v, w))
-                bricks.append((m, 2, x, y, z, d))
-                break
-    for v in layer:
-        if v in assigned:
+        x, _, z = cl
+        nx = [(x + d, y, z) for d in (1, -1) if free_same(cl, (x + d, y, z))]
+        nz = [(x, y, z + d) for d in (1, -1) if free_same(cl, (x, y, z + d))]
+        if nx and nz:
+            want = {"x": "z", "z": "x"}.get(below.get((x, z)), first)     # across the block below
+            partner = (nx if want == "x" else nz)[0]
+            match(cl, partner)
+            px, pz = axes(partner)
+            if axes(cl) == (1, 1) and ((pz == 0) if want == "x" else (px == 0)):
+                locked.update((cl, partner))                   # corner of one-cell walls: keep it
+    for cl in cells:                                           # 2) straight runs
+        if cl in mate:
             continue
-        x, _, z = v
-        m = vox[v]
-        for d, dx, dz in (("z", 0, 1), ("x", 1, 0), ("z", 0, -1), ("x", -1, 0)):
-            w = (x + dx, y, z + dz)
-            if w in vox and w not in assigned and vox[w] == m:
-                assigned.update((v, w))
-                bricks.append((m, 2, min(x, w[0]), y, min(z, w[2]), d))
-                break
+        x, _, z = cl
+        m = vox[cl]
+        if free_same(cl, (x + 1, y, z)) or free_same(cl, (x - 1, y, z)):
+            d, sx_, sz_ = "x", 1, 0
+        elif free_same(cl, (x, y, z + 1)) or free_same(cl, (x, y, z - 1)):
+            d, sx_, sz_ = "z", 0, 1
         else:
-            assigned.add(v)
-            bricks.append((m, 1, x, y, z, "x"))
+            continue
+        start = cl
+        while free_same(start, (start[0] - sx_, y, start[2] - sz_)):
+            start = (start[0] - sx_, y, start[2] - sz_)
+        run = [start]
+        while free_same(run[-1], (run[-1][0] + sx_, y, run[-1][2] + sz_)):
+            run.append((run[-1][0] + sx_, y, run[-1][2] + sz_))
+        before, after = (start[0] - sx_, y, start[2] - sz_), (run[-1][0] + sx_, y, run[-1][2] + sz_)
+        wall_before = before in layer and vox[before] == m        # a corner block was laid there
+        wall_after = after in layer and vox[after] == m
+        lead = 0 if wall_before else (len(run) % 2 if wall_after else ((start[0] if d == "x" else start[2]) + y) % 2)
+        rest = run[lead:]
+        if wall_before and wall_after and len(rest) % 2:
+            k = (len(rest) // 2) & ~1                           # the 1x1 in the middle, pairs on both sides
+            pairs = [(rest[j], rest[j + 1]) for j in range(0, k, 2)] + [(rest[j], rest[j + 1]) for j in range(k + 1, len(rest) - 1, 2)]
+        else:
+            pairs = [(rest[j], rest[j + 1]) for j in range(0, len(rest) - 1, 2)]
+        for a, b in pairs:
+            match(a, b)
+
+    def neighbours(a):
+        x, _, z = a
+        return [w for w in ((x + 1, y, z), (x - 1, y, z), (x, y, z + 1), (x, y, z - 1)) if same(a, w) and w not in locked]
+
+    for u in cells:                                            # 3) augmenting paths
+        if u in mate:
+            continue
+        prev, queue, found = {u: None}, [u], None
+        while queue and found is None:
+            nxt = []
+            for a in queue:
+                for w in neighbours(a):
+                    if w in prev:
+                        continue
+                    prev[w] = a
+                    if w not in mate:
+                        found = w
+                        break
+                    b = mate[w]
+                    if b not in prev:
+                        prev[b] = w
+                        nxt.append(b)
+                if found is not None:
+                    break
+            queue = nxt
+        w = found
+        while w is not None:
+            a = prev[w]
+            back = prev[a]
+            match(w, a)
+            w = back
+    singles = sum(1 for cl in cells if cl not in mate)
+    joints = layer_joints(cells, mate)
+    return mate, (singles, len(joints & joints_below)), joints
+
+
+def layer_joints(cells, mate):
+    """Vertical joints of a layer: neighbouring cells of the same material in different blocks, as (x, z) pairs."""
+    layer = set(cells)
+    out = set()
+    for cl in cells:
+        x, y, z = cl
+        for w in ((x + 1, y, z), (x, y, z + 1)):
+            if w in layer and vox[w] == vox[cl] and mate.get(cl) != w:
+                out.add(((x, z), (w[0], w[2])))
+    return out
+
+
+bricks = []
+below = {}                                                     # (x, z) -> direction of the block one layer lower
+joints_below = set()
+for y in sorted({k[1] for k in vox}):
+    cells = sorted((k for k in vox if k[1] == y), key=lambda k: (k[2], k[0]))
+    mate, score, joints = pack_layer(cells, y, below, joints_below)
+    mate_r, score_r, joints_r = pack_layer(cells[::-1], y, below, joints_below)
+    if score_r < score:
+        mate, joints = mate_r, joints_r
+    joints_below = joints
+    done = set()
+    below = {}
+    for cl in cells:
+        if cl in done:
+            continue
+        if cl in mate:
+            o = mate[cl]
+            d = "x" if cl[2] == o[2] else "z"
+            done.update((cl, o))
+            bricks.append((vox[cl], 2, min(cl[0], o[0]), y, min(cl[2], o[2]), d))
+            below[(cl[0], cl[2])] = below[(o[0], o[2])] = d
+        else:
+            done.add(cl)
+            bricks.append((vox[cl], 1, cl[0], y, cl[2], "x"))
+
+
+def corner_cell(c):
+    x, y, z = c
+    m = vox[c]
+    return any((x + d, y, z) in vox and vox[(x + d, y, z)] == m for d in (1, -1)) and any((x, y, z + d) in vox and vox[(x, y, z + d)] == m for d in (1, -1))
+
+
+_singles = [b for b in bricks if b[1] == 1]
+def nb_kind(cl):
+    x, y, z = cl
+    m = vox[cl]
+    ax = sum(1 for d in (1, -1) if (x + d, y, z) in vox and vox[(x + d, y, z)] == m)
+    az = sum(1 for d in (1, -1) if (x, y, z + d) in vox and vox[(x, y, z + d)] == m)
+    return "L corner" if ax == 1 and az == 1 else ("T" if ax + az == 3 and ax and az else ("inside" if ax == 2 and az == 2 else ("line" if not (ax and az) else "other")))
+
+
+from collections import Counter as _C
+_dir = {}
+for _b in bricks:
+    _m, _k, _x, _y, _z, _d = _b
+    for _cl in ([(_x, _y, _z)] if _k == 1 else ([(_x, _y, _z), (_x + 1, _y, _z)] if _d == "x" else [(_x, _y, _z), (_x, _y, _z + 1)])):
+        _dir[_cl] = _d if _k == 2 else "1"
+_pairs = [(cl, (cl[0], cl[1] + 1, cl[2])) for cl in vox if nb_kind(cl) == "L corner" and (cl[0], cl[1] + 1, cl[2]) in vox and nb_kind((cl[0], cl[1] + 1, cl[2])) == "L corner"]
+_cols = {}
+for cl in vox:
+    if nb_kind(cl) == "L corner":
+        _cols.setdefault((cl[0], cl[2]), []).append(cl[1])
+_alt = _tot = 0
+for (cx, cz), ys in _cols.items():
+    ys = sorted(ys)
+    run = [ys[0]]
+    for yy in ys[1:] + [None]:
+        if yy is not None and yy == run[-1] + 1:
+            run.append(yy)
+            continue
+        if len(run) >= 6:
+            for y0, y1 in zip(run, run[1:]):
+                da, db = _dir[(cx, y0, cz)], _dir[(cx, y1, cz)]
+                _tot += 1
+                _alt += da != db and "1" not in (da, db)
+        if yy is not None:
+            run = [yy]
+print(f"corner bond on vertical corners (6+ layers): {_alt} of {_tot} layer steps alternate")
+print(f"packing: {len(bricks)} blocks, {len(_singles)} of them 1x1:", dict(_C(nb_kind((b[2], b[3], b[4])) for b in _singles)))
 
 # ---- 8) Types, sections, output ----
 TYPES = {
