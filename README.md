@@ -11,6 +11,10 @@ The goal is a simplified **Notre-Dame with roughly 25,000 bricks**.
 
 ![Construction complete: garage with build replay](docs/modmapBrickByBrick2.png)
 
+![Proof of concept for the round parts: tower of 2x1 blocks along a circle, framed pointed window, cone of roof-tile rings](docs/modmapBrickByBrick3.png)
+
+*Proof of concept for the Notre-Dame's round parts: the 311-brick round test tower, built to completion in the game.*
+
 ## Status (2026-10-21)
 
 | Feature | Status |
