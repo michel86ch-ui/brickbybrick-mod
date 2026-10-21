@@ -18,7 +18,7 @@ just like the original buildings. The first building is a **test garage with 191
 | Brick slots, holograms, snapping into place | confirmed in game |
 | Progress per section, blueprint board counts along | confirmed in game |
 | Finished sections (final meshes), "Construction complete" message, build replay | confirmed in game |
-| Plinth made of game bricks, own 3D model on the blueprint board (0.2.0) | built, not yet tested in game |
+| Plinth made of game bricks, own 3D model on the blueprint board (0.2.0) | confirmed in game |
 | Saving and reloading the mod world | not yet tested |
 | "Mod Map" menu button with restart | planned |
 | Notre-Dame | planned |

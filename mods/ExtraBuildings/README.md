@@ -42,14 +42,14 @@ locks the mod world.
 door 2.52 x 2.10 m. 191 bricks: 91 x `Bakery_Brick_2D1CAFD3` (4x2x2 block), 100 x `Factory_Brick_7CB4833B`
 (2x2x2 block). Sections: lower walls 46, upper walls 49, roof 96. Plinth: 226 decor bricks.
 
-## Tested in game (0.1.0, without plinth)
+## Tested in game
 
-Brick slots, holograms, snapping, progress per section, blueprint board counts along, finished sections stay visible,
-"Construction complete", build replay.
+- 0.1.0: brick slots, holograms, snapping, progress per section, blueprint board counts along, finished sections stay
+  visible, "Construction complete", build replay.
+- 0.2.0: plinth made of game bricks, garage model on the blueprint board.
 
 ## Open
 
-- 0.2.0 in game: plinth, board model, board upright.
 - Saving and reloading the mod world.
 - Does the finished garage grant skill points (`construction-building` + building ID)?
 - "Mod Map" menu button with automatic restart.
