@@ -70,7 +70,7 @@ prerequisites: any piece whose top carries the brick within 4 cm and 0.45 m.
 - 0.3.0: menu button restarts into the mod map and back; the original buildings and their bricks are gone, the
   garage stands in the town center; a new mod world can be created and an existing one reopened with its progress.
 - 0.3.1: round test tower built to completion: angled, slightly overlapping blocks snap in, lying (pitch -90) frame
-  blocks, ring roof, final meshes and "Construction complete".
+  blocks, ring roof (no flickering thanks to the 5 mm lift), final meshes and "Construction complete".
 
 ## Open
 

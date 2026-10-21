@@ -26,7 +26,7 @@ The goal is a simplified **Notre-Dame with roughly 25,000 bricks**.
 | Mod map without the seven original buildings and their 18,485 bricks, garage in the town center (0.3.0) | confirmed in game |
 | "Start Mod Map" / "Back to normal worlds" menu button with automatic restart (0.3.0) | confirmed in game |
 | Saving and reloading the mod world | confirmed in game (an older test world reopened with its finished garage) |
-| Round parts: 2x1 blocks along a circle (slightly overlapping), tilted pieces, a cone of roof-tile rings (0.3.1, round test tower with 311 bricks) | confirmed in game |
+| Round parts: 2x1 blocks along a circle (slightly overlapping), tilted pieces, a cone of roof-tile rings without flickering (0.3.1, round test tower with 311 bricks) | confirmed in game |
 | Notre-Dame | planned |
 
 ## Mod map: a separate world instead of the main world
