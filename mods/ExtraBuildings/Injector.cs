@@ -125,17 +125,28 @@ namespace ExtraBuildings
                 ConstructionSceneInstaller csi = installers.First(c => ((ConstructionSite[])CsiSites.GetValue(c)).Contains(template));
                 var sites = (ConstructionSite[])CsiSites.GetValue(csi);
 
-                Quaternion rot = Quaternion.Euler(0f, Plugin.Yaw.Value, 0f);
-                Vector3 origin = new Vector3(Plugin.OriginX.Value, 0f, Plugin.OriginZ.Value);
-                origin.y = GroundY(origin.x, origin.z, out string groundName);
-                Plugin.Log.LogInfo($"Site {bp.siteId}: ({origin.x:0.00}, {origin.y:0.00}, {origin.z:0.00}), rotation {Plugin.Yaw.Value}, ground '{groundName}'.");
-
                 // ---- Clone of the template, hidden in an inactive holder (no Awake) ----
                 holder = new GameObject("ExtraBuildings_Holder");
                 holder.SetActive(false);
                 SceneManager.MoveGameObjectToScene(holder, scene);
                 GameObject clone = Object.Instantiate(template.gameObject, holder.transform);
                 clone.name = bp.displayName + "_Construction";
+
+                // Mod map without the original buildings: hide them now (after cloning the template, before measuring the ground)
+                bool clean = Plugin.RemoveVanilla.Value;
+                if (clean)
+                {
+                    foreach (ConstructionSite s in allSites)
+                    {
+                        HideSite(s);
+                    }
+                }
+
+                Quaternion rot = Quaternion.Euler(0f, Plugin.Yaw.Value, 0f);
+                Vector3 origin = new Vector3(Plugin.OriginX.Value, 0f, Plugin.OriginZ.Value);
+                origin.y = GroundY(origin.x, origin.z, out string groundName);
+                Plugin.Log.LogInfo($"Site {bp.siteId}: ({origin.x:0.00}, {origin.y:0.00}, {origin.z:0.00}), rotation {Plugin.Yaw.Value}, ground '{groundName}'" +
+                    (clean ? ", original buildings removed." : "."));
                 foreach (SceneLifecycleHook hook in clone.GetComponentsInChildren<SceneLifecycleHook>(true))
                 {
                     Object.DestroyImmediate(hook);   // the ConstructionSceneInstaller sits on the House root
@@ -367,14 +378,42 @@ namespace ExtraBuildings
                 }
                 var newCatalog = ScriptableObject.CreateInstance<BrickWorldCatalog>();
                 newCatalog.name = catalog.name + "+" + bp.siteId;
-                CatBricks.SetValue(newCatalog, origBricks.Concat(newRecords).ToArray());
+                CatBricks.SetValue(newCatalog, clean ? newRecords : origBricks.Concat(newRecords).ToArray());
                 CatVisuals.SetValue(newCatalog, visuals);
 
                 // ---- Inject: only now are the game's lists changed ----
                 BwsCatalog.SetValue(bws, newCatalog);
                 var gsiSlots = (PlacementSlot[])GsiSlots.GetValue(gsi);
+                if (clean)
+                {
+                    // Original slots out of the registry, original sites out of every installer; our site goes into the
+                    // template's installer. Installers left empty are skipped (see ConstructionSceneInstallerEnterPatch).
+                    var vanillaSlots = new HashSet<PlacementSlot>();
+                    foreach (ConstructionSite s in allSites)
+                    {
+                        foreach (ConstructionSection sec in s.Sections)
+                        {
+                            foreach (ConstructionSlot cs in sec.Slots)
+                            {
+                                if (cs != null && cs.PlacementSlot != null)
+                                {
+                                    vanillaSlots.Add(cs.PlacementSlot);
+                                }
+                            }
+                        }
+                    }
+                    gsiSlots = gsiSlots.Where(p => !vanillaSlots.Contains(p)).ToArray();
+                    foreach (ConstructionSceneInstaller inst in installers)
+                    {
+                        CsiSites.SetValue(inst, inst == csi ? new[] { site } : new ConstructionSite[0]);
+                    }
+                    Plugin.Log.LogInfo($"Original buildings removed: {allSites.Length} sites, {vanillaSlots.Count} slots, {origBricks.Length} bricks.");
+                }
+                else
+                {
+                    CsiSites.SetValue(csi, sites.Concat(new[] { site }).ToArray());
+                }
                 GsiSlots.SetValue(gsi, gsiSlots.Concat(placementSlots).ToArray());
-                CsiSites.SetValue(csi, sites.Concat(new[] { site }).ToArray());
                 clone.transform.SetParent(null, true);
                 SceneManager.MoveGameObjectToScene(clone, scene);
                 Object.Destroy(holder);
@@ -508,6 +547,25 @@ namespace ExtraBuildings
                 go.transform.localRotation = Quaternion.identity;
                 go.AddComponent<BoxCollider>().size = new Vector3(b.s[0], b.s[1], b.s[2]);
             }
+        }
+
+        /// <summary>
+        /// Hide an original building: its children (foundation, frames, blueprint board, props, slots) inactive, its site area
+        /// trigger and the site component off. The root stays active, because it carries the building's
+        /// ConstructionSceneInstaller, which also creates the UI for the site placed into it.
+        /// </summary>
+        private static void HideSite(ConstructionSite s)
+        {
+            GameObject root = s.gameObject;
+            foreach (Collider col in root.GetComponents<Collider>())
+            {
+                col.enabled = false;
+            }
+            for (int i = 0; i < root.transform.childCount; i++)
+            {
+                root.transform.GetChild(i).gameObject.SetActive(false);
+            }
+            s.enabled = false;
         }
 
         /// <summary>Height of the topmost solid (non-trigger) collider below the point.</summary>

@@ -19,8 +19,9 @@ just like the original buildings. The first building is a **test garage with 191
 | Progress per section, blueprint board counts along | confirmed in game |
 | Finished sections (final meshes), "Construction complete" message, build replay | confirmed in game |
 | Plinth made of game bricks, own 3D model on the blueprint board (0.2.0) | confirmed in game |
-| Saving and reloading the mod world | not yet tested |
-| "Mod Map" menu button with restart | planned |
+| Mod map without the seven original buildings and their 18,485 bricks, garage in the town center (0.3.0) | confirmed in game |
+| "Start Mod Map" / "Back to normal worlds" menu button with automatic restart (0.3.0) | confirmed in game |
+| Saving and reloading the mod world | confirmed in game (an older test world reopened with its finished garage) |
 | Notre-Dame | planned |
 
 ## Mod map: a separate world instead of the main world
@@ -34,14 +35,20 @@ whole game session:
 | Mode | Behavior |
 |---|---|
 | normal (default) | The mod does nothing. The mod world is locked, because without the mod the game would drop the extra buildings' bricks when loading it. |
-| mod map | Extra buildings are injected, every world choice in the menu opens the mod world, "MOD-MAP" is shown top left. |
+| mod map | The seven original buildings and their bricks are removed, the extra buildings are injected, every world choice in the menu opens the mod world, "MOD-MAP" is shown top left. |
+
+The main menu has a button top left: **Start Mod Map** in a normal session, **Back to normal worlds** in a mod-map
+session. It saves the mode and restarts the game through Steam.
+
+Placed bricks are saved with their world position. Do not move a site (`F9` or `X`/`Z` in the config) in a mod world
+that already has bricks on it: they would stay behind at the old place. Delete the mod world first.
 
 ## Installation
 
 1. Unpack [BepInEx 5.4.23.5 x64](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.5) into the game folder.
 2. Build the mod (see below) – `ExtraBuildings.dll` and `blueprints\garage.json` end up in `BepInEx\plugins\ExtraBuildings\`.
-3. Start the game once and quit. In `BepInEx\config\michel.brickbybrick.extrabuildings.cfg` set `ModMapEnabled = true`.
-4. Start the game, choose any world -> mod world. The garage stands on the meadow east of the spawn.
+3. Start the game and click **Start Mod Map** top left in the main menu; the game restarts as mod map.
+4. Choose any world -> mod world (world slot 4). The town is empty, the garage stands in its center.
 
 Uninstall: delete `winhttp.dll`, `doorstop_config.ini`, `.doorstop_version`, `changelog.txt` and the `BepInEx` folder
 in the game folder. The game itself is not modified.

@@ -1,8 +1,11 @@
+using System;
+using System.Diagnostics;
 using System.IO;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using Unity.Netcode;
 using UnityEngine;
 
 namespace ExtraBuildings
@@ -15,13 +18,17 @@ namespace ExtraBuildings
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Guid = "michel.brickbybrick.extrabuildings";
-        public const string Version = "0.2.0";
+        public const string Version = "0.3.0";
+        private const string SteamAppId = "5228920";
 
         internal static ManualLogSource Log;
         internal static string PluginDir;
         /// <summary>Mode of this game session, fixed at startup (the gameplay scene is only loaded once).</summary>
         internal static bool ModMapSession;
         internal static ConfigEntry<bool> ModMapActive;
+        internal static ConfigEntry<bool> RemoveVanilla;
+        private static Plugin instance;
+        private static bool restarting;
         internal static ConfigEntry<string> TargetSlot;
         internal static ConfigEntry<string> BlueprintFile;
         internal static ConfigEntry<float> OriginX;
@@ -35,7 +42,10 @@ namespace ExtraBuildings
         private void Awake()
         {
             Log = Logger;
+            instance = this;
             PluginDir = Path.GetDirectoryName(Info.Location);
+            RemoveVanilla = Config.Bind("General", "RemoveVanillaBuildings", true,
+                "Mod map only: remove the seven original buildings and their bricks, so the town is free for the extra buildings.");
             ModMapActive = Config.Bind("General", "ModMapEnabled", false,
                 "true = the game starts as mod map: extra buildings are injected and every world choice opens the mod world. " +
                 "false = mod inactive, the mod world is locked. Takes effect at the next game start.");
@@ -43,9 +53,9 @@ namespace ExtraBuildings
                 "World slot of the mod map (singleplayer-1 to singleplayer-4). Other worlds stay unchanged.");
             ModMapSession = ModMapActive.Value;
             BlueprintFile = Config.Bind("General", "Blueprint", "garage.json", "Blueprint file in the plugin folder.");
-            OriginX = Config.Bind("Site", "X", 12f, "World X coordinate of the footprint center.");
-            OriginZ = Config.Bind("Site", "Z", 42f, "World Z coordinate of the footprint center.");
-            Yaw = Config.Bind("Site", "Rotation", 90f, "Rotation in degrees. At 90 the door faces west (towards the spawn).");
+            OriginX = Config.Bind("Site", "X", 0f, "World X coordinate of the footprint center (0 = town center).");
+            OriginZ = Config.Bind("Site", "Z", 0f, "World Z coordinate of the footprint center (0 = town center).");
+            Yaw = Config.Bind("Site", "Rotation", 0f, "Rotation in degrees.");
             MoveKey = Config.Bind("Site", "MoveKey", new KeyboardShortcut(KeyCode.F9),
                 "Moves the site 4 m in front of you, door facing you. Takes effect at the next game start.");
             new Harmony(Guid).PatchAll(typeof(Plugin).Assembly);
@@ -88,9 +98,56 @@ namespace ExtraBuildings
             toastUntil = Time.unscaledTime + seconds;
         }
 
+        /// <summary>Main menu = no network session running (the town scene is loaded behind the menu).</summary>
+        private static bool InMainMenu()
+        {
+            NetworkManager nm = NetworkManager.Singleton;
+            return nm != null && !nm.IsListening && !nm.ShutdownInProgress;
+        }
+
+        /// <summary>Switch the mode and restart the game through Steam (the town scene is only loaded once per game start).</summary>
+        private static void RestartInto(bool modMap)
+        {
+            if (restarting)
+            {
+                return;
+            }
+            restarting = true;
+            ModMapActive.Value = modMap;
+            instance.Config.Save();
+            int pid = Process.GetCurrentProcess().Id;
+            string ps = $"Wait-Process -Id {pid} -Timeout 90 -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; Start-Process 'steam://rungameid/{SteamAppId}'";
+            try
+            {
+                Process.Start(new ProcessStartInfo("powershell.exe", $"-NoProfile -WindowStyle Hidden -Command \"{ps}\"")
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                });
+                Log.LogInfo($"Restarting into {(modMap ? "mod map" : "normal worlds")}.");
+                Toast(modMap ? "Restarting as mod map..." : "Restarting with the normal worlds...", 10f);
+                Application.Quit();
+            }
+            catch (Exception e)
+            {
+                restarting = false;
+                Log.LogError("Restart failed: " + e);
+                Toast("Restart failed. The mode switches at the next manual game start.", 10f);
+            }
+        }
+
         private void OnGUI()
         {
-            if (ModMapSession)
+            if (InMainMenu())
+            {
+                var btn = new GUIStyle(GUI.skin.button) { fontSize = 17, alignment = TextAnchor.MiddleCenter };
+                string label = ModMapSession ? "Back to normal worlds" : "Start Mod Map";
+                if (GUI.Button(new Rect(12f, 12f, 230f, 38f), label, btn))
+                {
+                    RestartInto(!ModMapSession);
+                }
+            }
+            else if (ModMapSession)
             {
                 var badge = new GUIStyle(GUI.skin.box) { fontSize = 16, alignment = TextAnchor.MiddleCenter };
                 GUI.Box(new Rect(12f, 12f, 150f, 30f), "MOD-MAP", badge);

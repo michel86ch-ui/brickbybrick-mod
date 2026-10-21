@@ -46,13 +46,26 @@ namespace ExtraBuildings
         }
     }
 
-    /// <summary>Logging only: order and errors of the game's site initialization.</summary>
+    /// <summary>
+    /// Installers whose sites the mod removed (mod map without the original buildings) are skipped: the game's
+    /// ConstructionStateNetworkSynchronizer requires 1..32 sites. Their cleanup copes with the parts never created.
+    /// Otherwise logging only.
+    /// </summary>
     [HarmonyPatch(typeof(ConstructionSceneInstaller), nameof(ConstructionSceneInstaller.OnSceneEnterAsync))]
     internal static class ConstructionSceneInstallerEnterPatch
     {
-        private static void Prefix()
+        private static readonly System.Reflection.FieldInfo Sites = AccessTools.Field(typeof(ConstructionSceneInstaller), "sites");
+
+        private static bool Prefix(ConstructionSceneInstaller __instance, ref System.Threading.Tasks.Task __result)
         {
+            if (Plugin.ModMapSession && Sites.GetValue(__instance) is ConstructionSite[] s && s.Length == 0)
+            {
+                Plugin.Log.LogInfo($"Skipping empty construction installer on '{__instance.name}'.");
+                __result = System.Threading.Tasks.Task.CompletedTask;
+                return false;
+            }
             Plugin.Log.LogDebug("ConstructionSceneInstaller.OnSceneEnterAsync starts.");
+            return true;
         }
 
         private static Exception Finalizer(Exception __exception)
