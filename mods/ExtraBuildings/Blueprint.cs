@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
 using UnityEngine;
 
@@ -20,7 +21,22 @@ namespace ExtraBuildings
         public BoxSpec[] colliders;
         /// <summary>Plinth bricks: visuals only, no slots.</summary>
         public DecorSpec[] decor;
+        /// <summary>
+        /// Scaffold parts (local, y above ground): [cx, cy, cz, sx, sy, sz] = walkable box with a collider;
+        /// [cx, cy, cz, sx, sy, sz, pitch, yaw, roll] = rotated part (braces), visuals only.
+        /// </summary>
+        public float[][] scaffold;
         public BrickSpec[] bricks;
+        /// <summary>
+        /// Optional: the building as several construction sites (the game allows at most 8192 slots and 256 sections
+        /// per site). Without parts the whole blueprint is one site.
+        /// </summary>
+        public PartSpec[] parts;
+
+        internal PartSpec[] Parts => parts != null && parts.Length > 0 ? parts : new[]
+        {
+            new PartSpec { siteId = siteId, displayName = displayName, sections = Enumerable.Range(0, sections.Length).ToArray(), blueprintStand = blueprintStand },
+        };
 
         public static Blueprint Load(string path)
         {
@@ -45,8 +61,37 @@ namespace ExtraBuildings
                     }
                 }
             }
+            var owner = new int[bp.sections.Length];
+            foreach (PartSpec part in bp.Parts)
+            {
+                if (string.IsNullOrWhiteSpace(part.siteId) || part.sections == null || part.sections.Length == 0)
+                {
+                    throw new InvalidDataException("Blueprint part without site ID or sections.");
+                }
+                foreach (int s in part.sections)
+                {
+                    if (s < 0 || s >= bp.sections.Length || owner[s]++ > 0)
+                    {
+                        throw new InvalidDataException($"Section {s} of part '{part.siteId}' is invalid or belongs to two parts.");
+                    }
+                }
+            }
+            if (owner.Any(c => c == 0) || bp.Parts.Select(p => p.siteId).Distinct().Count() != bp.Parts.Length)
+            {
+                throw new InvalidDataException("Every section needs exactly one part, every part its own site ID.");
+            }
             return bp;
         }
+    }
+
+    internal sealed class PartSpec
+    {
+        public string siteId;
+        public string displayName;
+        /// <summary>Indices into Blueprint.sections, in building order.</summary>
+        public int[] sections;
+        /// <summary>Optional: own blueprint board [x, z, degrees]; default: the blueprint's.</summary>
+        public float[] blueprintStand;
     }
 
     internal sealed class PileSpec
@@ -56,6 +101,16 @@ namespace ExtraBuildings
         public float gap = 0.06f;
         public int perRow = 10;
         public int stack = 2;
+        /// <summary>Optional: highest stack in meters (caps the stack per brick type).</summary>
+        public float maxHeight;
+        /// <summary>Optional: local rectangles [x0, z0, x1, z1] that are filled one after the other (x first, then z).</summary>
+        public float[][] areas;
+
+        internal int StackFor(float brickHeight)
+        {
+            int s = Mathf.Max(1, stack);
+            return maxHeight > 0f ? Mathf.Clamp(Mathf.FloorToInt(maxHeight / Mathf.Max(0.01f, brickHeight)), 1, s) : s;
+        }
     }
 
     internal sealed class BoxSpec

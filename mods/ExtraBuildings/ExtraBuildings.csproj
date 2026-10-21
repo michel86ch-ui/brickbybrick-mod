@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>ExtraBuildings</AssemblyName>
     <RootNamespace>ExtraBuildings</RootNamespace>
-    <Version>0.3.1</Version>
+    <Version>0.4.1</Version>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <GameDir>C:\Program Files (x86)\Steam\steamapps\common\Brick by Brick Tidy Up the Small Town!\</GameDir>
@@ -24,10 +24,12 @@
     <Reference Include="Unity.Netcode.Runtime"><HintPath>$(ManagedDir)Unity.Netcode.Runtime.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Newtonsoft.Json"><HintPath>$(ManagedDir)Newtonsoft.Json.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="InitArgs"><HintPath>$(ManagedDir)InitArgs.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="InitArgs.Netcode"><HintPath>$(ManagedDir)InitArgs.Netcode.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="MultiplayerTemplate.Core"><HintPath>$(ManagedDir)MultiplayerTemplate.Core.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="MultiplayerTemplate.Game"><HintPath>$(ManagedDir)MultiplayerTemplate.Game.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="MultiplayerTemplate.Construction"><HintPath>$(ManagedDir)MultiplayerTemplate.Construction.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="MultiplayerTemplate.BrickWorld"><HintPath>$(ManagedDir)MultiplayerTemplate.BrickWorld.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="MultiplayerTemplate.Player"><HintPath>$(ManagedDir)MultiplayerTemplate.Player.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="MultiplayerTemplate.Bootstrap"><HintPath>$(ManagedDir)MultiplayerTemplate.Bootstrap.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
 

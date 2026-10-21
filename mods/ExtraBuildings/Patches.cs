@@ -1,8 +1,12 @@
 using System;
+using System.Collections.Generic;
+using System.Reflection;
 using HarmonyLib;
 using MultiplayerTemplate.Bootstrap;
 using MultiplayerTemplate.Construction;
 using MultiplayerTemplate.Game.Scenes;
+using MultiplayerTemplate.Player;
+using UnityEngine;
 
 namespace ExtraBuildings
 {
@@ -33,6 +37,79 @@ namespace ExtraBuildings
                 Plugin.Log.LogWarning($"Normal session: '{target}' is the mod map and locked here.");
                 throw new InvalidOperationException($"'{target}' is the mod map and can only be loaded in a mod-map session.");
             }
+        }
+    }
+
+    /// <summary>
+    /// The parts of a building share one site area, so every part would show its progress panel at once. Only the part
+    /// whose bricks are nearest to the player keeps it; the others release theirs. Placing bricks is not affected
+    /// (PlacementSlot.IsPlayerInside checks the area collider itself).
+    /// </summary>
+    [HarmonyPatch(typeof(ConstructionSite), "ObserveLocalPlayer")]
+    internal static class PartFocusPatch
+    {
+        private static readonly FieldInfo LocalPlayer = AccessTools.Field(typeof(ConstructionSite), "localPlayer");
+        private static readonly MethodInfo ClearPresence = AccessTools.Method(typeof(ConstructionSite), "ClearLocalPresence");
+
+        private static bool Prefix(ConstructionSite __instance, Collider other)
+        {
+            if (other == null || !PartFocus.IsPart(__instance))
+            {
+                return true;
+            }
+            NetworkPlayerController player = other.GetComponentInParent<NetworkPlayerController>();
+            if (player == null || player.BodyCollider != other || !player.IsOwner || PartFocus.Nearest(other.transform.position) == __instance)
+            {
+                return true;   // other colliders and the chosen part: the game's own handling
+            }
+            if (LocalPlayer.GetValue(__instance) != null)
+            {
+                ClearPresence.Invoke(__instance, null);
+            }
+            return false;
+        }
+    }
+
+    internal static class PartFocus
+    {
+        private static readonly Dictionary<ConstructionSite, Bounds> Parts = new Dictionary<ConstructionSite, Bounds>();
+        private static int cachedFrame = -1;
+        private static ConstructionSite cached;
+
+        internal static void Clear() => Parts.Clear();
+
+        internal static void Register(ConstructionSite site, Bounds bricks) => Parts[site] = bricks;
+
+        internal static bool IsPart(ConstructionSite site) => Parts.ContainsKey(site);
+
+        /// <summary>Part with the nearest bricks; inside several brick boxes the smaller box wins.</summary>
+        internal static ConstructionSite Nearest(Vector3 position)
+        {
+            if (cachedFrame == Time.frameCount && cached != null)
+            {
+                return cached;
+            }
+            ConstructionSite best = null;
+            float bestDistance = float.MaxValue, bestVolume = float.MaxValue;
+            foreach (KeyValuePair<ConstructionSite, Bounds> part in Parts)
+            {
+                if (part.Key == null)
+                {
+                    continue;
+                }
+                float distance = part.Value.SqrDistance(position);
+                Vector3 size = part.Value.size;
+                float volume = size.x * size.y * size.z;
+                if (distance < bestDistance - 0.01f || (Mathf.Abs(distance - bestDistance) <= 0.01f && volume < bestVolume))
+                {
+                    best = part.Key;
+                    bestDistance = distance;
+                    bestVolume = volume;
+                }
+            }
+            cachedFrame = Time.frameCount;
+            cached = best;
+            return best;
         }
     }
 

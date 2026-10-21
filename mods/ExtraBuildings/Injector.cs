@@ -63,7 +63,7 @@ namespace ExtraBuildings
                 string bpPath = Path.Combine(Plugin.PluginDir, Plugin.BlueprintFile.Value);
                 Blueprint bp = Blueprint.Load(bpPath);
                 ConstructionSite[] allSites = installers.SelectMany(c => (ConstructionSite[])CsiSites.GetValue(c)).Where(s => s != null).ToArray();
-                if (allSites.Any(s => s.SiteId == bp.siteId))
+                if (allSites.Any(s => bp.Parts.Any(p => p.siteId == s.SiteId)))
                 {
                     Plugin.Log.LogInfo($"Site '{bp.siteId}' is already injected.");
                     return;
@@ -125,12 +125,26 @@ namespace ExtraBuildings
                 ConstructionSceneInstaller csi = installers.First(c => ((ConstructionSite[])CsiSites.GetValue(c)).Contains(template));
                 var sites = (ConstructionSite[])CsiSites.GetValue(csi);
 
-                // ---- Clone of the template, hidden in an inactive holder (no Awake) ----
+                // ---- One clone of the template per part, hidden in an inactive holder (no Awake) ----
+                PartSpec[] parts = bp.Parts;
+                int n = bp.bricks.Length;
+                var partOfSection = new int[bp.sections.Length];
+                for (int p = 0; p < parts.Length; p++)
+                {
+                    foreach (int s in parts[p].sections)
+                    {
+                        partOfSection[s] = p;
+                    }
+                }
                 holder = new GameObject("ExtraBuildings_Holder");
                 holder.SetActive(false);
                 SceneManager.MoveGameObjectToScene(holder, scene);
-                GameObject clone = Object.Instantiate(template.gameObject, holder.transform);
-                clone.name = bp.displayName + "_Construction";
+                var clones = new GameObject[parts.Length];
+                for (int p = 0; p < parts.Length; p++)
+                {
+                    clones[p] = Object.Instantiate(template.gameObject, holder.transform);
+                    clones[p].name = parts[p].displayName + "_Construction";
+                }
 
                 // Mod map without the original buildings: hide them now (after cloning the template, before measuring the ground)
                 bool clean = Plugin.RemoveVanilla.Value;
@@ -147,163 +161,8 @@ namespace ExtraBuildings
                 origin.y = GroundY(origin.x, origin.z, out string groundName);
                 Plugin.Log.LogInfo($"Site {bp.siteId}: ({origin.x:0.00}, {origin.y:0.00}, {origin.z:0.00}), rotation {Plugin.Yaw.Value}, ground '{groundName}'" +
                     (clean ? ", original buildings removed." : "."));
-                foreach (SceneLifecycleHook hook in clone.GetComponentsInChildren<SceneLifecycleHook>(true))
-                {
-                    Object.DestroyImmediate(hook);   // the ConstructionSceneInstaller sits on the House root
-                }
-                // Remember the layer of the house foundation (walkable) for the colliders of our own plinth
-                Transform houseGround = clone.transform.Find("House/Base_Ground");
-                int groundLayer = houseGround != null ? houseGround.gameObject.layer : 0;
-                foreach (string child in new[] { "CompletionObjects", "Supply", "House" })
-                {
-                    Transform t = clone.transform.Find(child);
-                    if (t != null)
-                    {
-                        Object.DestroyImmediate(t.gameObject);
-                    }
-                }
-                ConstructionSite site = clone.GetComponent<ConstructionSite>();
-                Site("completedPrompts").SetValue(site, null);
-                Site("completionObject").SetValue(site, null);
-                Site("preCompletionObject").SetValue(site, null);
-                Site("constructionFrame").SetValue(site, null);
-                var oldSections = (ConstructionSection[])Site("sections").GetValue(site);
-                ConstructionSection sectionTemplate = oldSections[0];
-                for (int i = 1; i < oldSections.Length; i++)
-                {
-                    Object.DestroyImmediate(oldSections[i].gameObject);
-                }
-                for (int i = sectionTemplate.transform.childCount - 1; i >= 0; i--)
-                {
-                    Object.DestroyImmediate(sectionTemplate.transform.GetChild(i).gameObject);
-                }
-                clone.transform.SetPositionAndRotation(origin, rot);
-                Transform stand = clone.transform.Find("Blueprint");
-                if (stand != null && bp.blueprintStand != null && bp.blueprintStand.Length >= 2)
-                {
-                    // Keep the template's height and tilt, only move it and turn it around the vertical axis
-                    stand.localPosition = new Vector3(bp.blueprintStand[0], stand.localPosition.y, bp.blueprintStand[1]);
-                    if (bp.blueprintStand.Length >= 3)
-                    {
-                        stand.localRotation = Quaternion.Euler(0f, bp.blueprintStand[2], 0f) * stand.localRotation;
-                    }
-                }
 
-                // ---- Sections with their own final mesh ----
-                int nSec = bp.sections.Length;
-                var sections = new ConstructionSection[nSec];
-                var finalRoots = new GameObject[nSec];
-                for (int s = 0; s < nSec; s++)
-                {
-                    GameObject secGo = Object.Instantiate(sectionTemplate.gameObject, sectionTemplate.transform.parent);
-                    secGo.name = "Section_" + bp.sections[s];
-                    secGo.transform.SetPositionAndRotation(origin, rot);
-                    sections[s] = secGo.GetComponent<ConstructionSection>();
-                    Section("displayName").SetValue(sections[s], bp.sections[s]);
-                    var fr = new GameObject(bp.sections[s] + "_FinalStaticMesh");
-                    fr.transform.SetParent(secGo.transform, false);
-                    fr.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-                    fr.SetActive(false);
-                    finalRoots[s] = fr;
-                }
-                Object.DestroyImmediate(sectionTemplate.gameObject);
-
-                // Site area: PlacementSlot.IsPlayerInside checks placeTrigger -> it must be the area of THIS site
-                if (!(Site("constructionArea").GetValue(site) is Collider siteArea) || !siteArea.isTrigger)
-                {
-                    throw new InvalidOperationException("The template's site area is missing or not a trigger.");
-                }
-
-                // ---- Slots ----
-                int n = bp.bricks.Length;
-                var slots = new ConstructionSlot[n];
-                var placementSlots = new PlacementSlot[n];
-                int foreignRefs = 0;
-                for (int i = 0; i < n; i++)
-                {
-                    BrickSpec b = bp.bricks[i];
-                    ConstructionSlot tmpl = slotByDef[b.def];
-                    GameObject go = Object.Instantiate(tmpl.gameObject, sections[b.s].transform);
-                    go.name = $"Slot_{i:0000}_{b.def}";
-                    go.transform.SetPositionAndRotation(origin + rot * new Vector3(b.p[0], b.p[1], b.p[2]), rot * b.Rotation);
-                    PlacementSlot ps = go.GetComponent<PlacementSlot>();
-                    ConstructionSlot cs = go.GetComponent<ConstructionSlot>();
-                    Placement("slotId").SetValue(ps, new PlacementSlotId(IdBase + 1u + (uint)i));
-                    Slot("placementSlot").SetValue(cs, ps);
-                    Slot("manualPrerequisites").SetValue(cs, true);
-                    Slot("prerequisiteMode").SetValue(cs, (ConstructionPrerequisiteMode)b.mode);
-                    Slot("finalVisualRoot").SetValue(cs, finalRoots[b.s]);
-                    Placement("placeTrigger").SetValue(ps, siteArea);
-                    foreach (string f in new[] { "placementAnchor", "hologramRoot", "ruleProvider" })
-                    {
-                        object refValue = Placement(f).GetValue(ps);
-                        Transform refTransform = refValue is Component c && c != null ? c.transform
-                            : refValue is GameObject g && g != null ? g.transform : null;
-                        if (refTransform != null && !refTransform.IsChildOf(go.transform))
-                        {
-                            foreignRefs++;
-                            if (foreignRefs <= 3)
-                            {
-                                Plugin.Log.LogWarning($"Slot {i}: '{f}' points to '{refTransform.name}' outside the slot.");
-                            }
-                        }
-                    }
-                    slots[i] = cs;
-                    placementSlots[i] = ps;
-                }
-                if (foreignRefs > 0)
-                {
-                    Plugin.Log.LogWarning($"{foreignRefs} slot references point outside the clone (template shares objects).");
-                }
-                for (int i = 0; i < n; i++)
-                {
-                    int[] req = bp.bricks[i].req ?? new int[0];
-                    Slot("prerequisites").SetValue(slots[i], req.Select(j => slots[j]).ToArray());
-                }
-                var perSection = new List<ConstructionSlot>[nSec];
-                for (int s = 0; s < nSec; s++)
-                {
-                    perSection[s] = new List<ConstructionSlot>();
-                }
-                for (int i = 0; i < n; i++)
-                {
-                    perSection[bp.bricks[i].s].Add(slots[i]);
-                }
-                for (int s = 0; s < nSec; s++)
-                {
-                    if (perSection[s].Count == 0)
-                    {
-                        throw new InvalidDataException($"Section '{bp.sections[s]}' has no bricks.");
-                    }
-                    Section("slots").SetValue(sections[s], perSection[s].ToArray());
-                }
-
-                // ---- Final meshes: one combined mesh per section (shown instead of the single bricks once a section is complete) ----
-                for (int s = 0; s < nSec; s++)
-                {
-                    int sec = s;
-                    GameObject fin = CombinedBricks(bp.sections[s] + "_Mesh",
-                        bp.bricks.Where(b => b.s == sec).Select(b => (b.def, b.p, b.Rotation)), recByDef, visuals, finalRoots[s].transform, true);
-                    fin?.transform.SetPositionAndRotation(origin, rot);
-                }
-
-                // ---- Bake the topology (as the Unity editor does for the original sites) ----
-                var specs = new List<ConstructionSlotSpec>(n);
-                for (int s = 0; s < nSec; s++)
-                {
-                    foreach (ConstructionSlot cs in perSection[s])
-                    {
-                        PlacementSlotId[] pre = cs.Prerequisites.Select(p => p.PlacementSlot.SlotId).ToArray();
-                        specs.Add(new ConstructionSlotSpec(cs.PlacementSlot.SlotId, cs.ExpectedDefinition.DefinitionId, s, pre, cs.PrerequisiteMode));
-                    }
-                }
-                Site("siteId").SetValue(site, bp.siteId);
-                Site("displayName").SetValue(site, bp.displayName);
-                Site("sections").SetValue(site, sections);
-                Site("bakedSpecs").SetValue(site, specs.ToArray());
-                Site("bakedSectionCount").SetValue(site, nSec);
-
-                // Site area (trigger) around the footprint
+                // Site area of every part: around all bricks and the scaffold (placing needs the player inside it)
                 Vector3 min = Vector3.positiveInfinity, max = Vector3.negativeInfinity;
                 foreach (BrickSpec b in bp.bricks)
                 {
@@ -311,40 +170,43 @@ namespace ExtraBuildings
                     min = Vector3.Min(min, p);
                     max = Vector3.Max(max, p);
                 }
-                if (siteArea is BoxCollider area)
+                foreach (float[] b in bp.scaffold ?? new float[0][])
                 {
-                    area.center = new Vector3((min.x + max.x) / 2f, (max.y + 2f) / 2f, (min.z + max.z) / 2f);
-                    area.size = new Vector3(max.x - min.x + 6f, max.y + 4f, max.z - min.z + 6f);
+                    min = Vector3.Min(min, new Vector3(b[0] - b[3] / 2f, b[1] - b[4] / 2f, b[2] - b[5] / 2f));
+                    max = Vector3.Max(max, new Vector3(b[0] + b[3] / 2f, b[1] + b[4] / 2f, b[2] + b[5] / 2f));
                 }
-                else
+                var built = new ConstructionSite[parts.Length];
+                var placementSlots = new PlacementSlot[n];
+                for (int p = 0; p < parts.Length; p++)
                 {
-                    Plugin.Log.LogWarning("Site area is not a BoxCollider, the template's size is kept.");
+                    built[p] = BuildPart(bp, parts[p], p, partOfSection, clones[p], origin, rot, slotByDef, recByDef, visuals, min, max, placementSlots);
                 }
-
-                BuildFoundation(bp, clone.transform, recByDef, visuals, groundLayer);
-
-                // Blueprint board: our own 3D model instead of the house (the board requires a single mesh without children)
-                var preview = clone.GetComponentInChildren<ConstructionBlueprintPreview>(true);
-                if (preview != null)
+                PartFocus.Clear();
+                if (parts.Length > 1)
                 {
-                    GameObject model = BuildPreviewModel(bp, recByDef, visuals, clone.transform);
-                    if (model != null)
+                    for (int p = 0; p < parts.Length; p++)
                     {
-                        AccessTools.Field(typeof(ConstructionBlueprintPreview), "modelPrefab").SetValue(preview, model);
+                        var bounds = new Bounds(origin, Vector3.zero);
+                        bool first = true;
+                        for (int i = 0; i < n; i++)
+                        {
+                            if (partOfSection[bp.bricks[i].s] != p)
+                            {
+                                continue;
+                            }
+                            Vector3 w = origin + rot * new Vector3(bp.bricks[i].p[0], bp.bricks[i].p[1], bp.bricks[i].p[2]);
+                            if (first)
+                            {
+                                bounds = new Bounds(w, Vector3.zero);
+                                first = false;
+                            }
+                            else
+                            {
+                                bounds.Encapsulate(w);
+                            }
+                        }
+                        PartFocus.Register(built[p], bounds);
                     }
-                }
-
-                if (!site.ValidateAuthoredReferences(out string issue))
-                {
-                    throw new InvalidOperationException("Site validation failed: " + issue);
-                }
-                try
-                {
-                    SiteGetBakedSpecs.Invoke(site, null);
-                }
-                catch (TargetInvocationException tie)
-                {
-                    throw new InvalidOperationException("Invalid topology: " + tie.InnerException?.Message);
                 }
 
                 // ---- Material: extended catalog ----
@@ -352,19 +214,28 @@ namespace ExtraBuildings
                 var order = Enumerable.Range(0, n).OrderBy(i => bp.bricks[i].def, StringComparer.Ordinal).ToArray();
                 float rowZ = bp.pile.z;
                 int idx = 0;
+                var cursor = bp.pile.areas != null && bp.pile.areas.Length > 0 ? new AreaCursor(bp.pile.areas, 0.5f) : null;
                 foreach (IGrouping<string, int> group in order.GroupBy(i => bp.bricks[i].def))
                 {
                     BrickRecord tmplRec = recByDef[group.Key];
                     Vector3 size = tmplRec.colliderSize;
                     float cellX = size.x + bp.pile.gap, cellZ = size.z + bp.pile.gap;
+                    int stack = bp.pile.StackFor(size.y);
                     int j = 0, rows = 0;
+                    cursor?.NewGroup();
+                    Vector2 column = Vector2.zero;
                     foreach (int i in group)
                     {
-                        int level = j % Math.Max(1, bp.pile.stack);
-                        int col = (j / Math.Max(1, bp.pile.stack)) % Math.Max(1, bp.pile.perRow);
-                        int row = (j / Math.Max(1, bp.pile.stack)) / Math.Max(1, bp.pile.perRow);
+                        int level = j % stack;
+                        int col = (j / stack) % Math.Max(1, bp.pile.perRow);
+                        int row = (j / stack) / Math.Max(1, bp.pile.perRow);
                         rows = Math.Max(rows, row + 1);
-                        Vector3 local = new Vector3(bp.pile.x + col * cellX + cellX / 2f, 0f, rowZ + row * cellZ + cellZ / 2f);
+                        if (cursor != null && level == 0)
+                        {
+                            column = cursor.Next(cellX, cellZ);
+                        }
+                        Vector3 local = cursor != null ? new Vector3(column.x, 0f, column.y)
+                            : new Vector3(bp.pile.x + col * cellX + cellX / 2f, 0f, rowZ + row * cellZ + cellZ / 2f);
                         Vector3 world = origin + rot * local;
                         world.y = GroundY(world.x, world.z, out _) + size.y / 2f + level * size.y + 0.002f;
                         BrickRecord rec = tmplRec;
@@ -375,6 +246,10 @@ namespace ExtraBuildings
                         j++;
                     }
                     rowZ += rows * cellZ + 0.5f;
+                }
+                if (cursor != null && cursor.Overflow)
+                {
+                    Plugin.Log.LogWarning("Brick supply: the pile areas are full, the rest continues behind the last area.");
                 }
                 var newCatalog = ScriptableObject.CreateInstance<BrickWorldCatalog>();
                 newCatalog.name = catalog.name + "+" + bp.siteId;
@@ -405,21 +280,24 @@ namespace ExtraBuildings
                     gsiSlots = gsiSlots.Where(p => !vanillaSlots.Contains(p)).ToArray();
                     foreach (ConstructionSceneInstaller inst in installers)
                     {
-                        CsiSites.SetValue(inst, inst == csi ? new[] { site } : new ConstructionSite[0]);
+                        CsiSites.SetValue(inst, inst == csi ? built : new ConstructionSite[0]);
                     }
                     Plugin.Log.LogInfo($"Original buildings removed: {allSites.Length} sites, {vanillaSlots.Count} slots, {origBricks.Length} bricks.");
                 }
                 else
                 {
-                    CsiSites.SetValue(csi, sites.Concat(new[] { site }).ToArray());
+                    CsiSites.SetValue(csi, sites.Concat(built).ToArray());
                 }
                 GsiSlots.SetValue(gsi, gsiSlots.Concat(placementSlots).ToArray());
-                clone.transform.SetParent(null, true);
-                SceneManager.MoveGameObjectToScene(clone, scene);
+                foreach (GameObject clone in clones)
+                {
+                    clone.transform.SetParent(null, true);
+                    SceneManager.MoveGameObjectToScene(clone, scene);
+                }
                 Object.Destroy(holder);
                 holder = null;
-                Plugin.Log.LogInfo($"Site '{bp.siteId}' injected: {n} slots in {nSec} sections, {n} bricks in the supply, " +
-                    $"IDs {IdBase + 1}..{IdBase + (uint)n}.");
+                Plugin.Log.LogInfo($"Site '{bp.siteId}' injected: {parts.Length} construction site(s), {n} slots in {bp.sections.Length} sections, " +
+                    $"{n} bricks in the supply, IDs {IdBase + 1}..{IdBase + (uint)n}.");
             }
             catch (Exception e)
             {
@@ -431,17 +309,245 @@ namespace ExtraBuildings
             }
         }
 
+        /// <summary>The game's limits per construction site (ConstructionStateNetworkSynchronizer).</summary>
+        private const int MaxSlotsPerSite = 8192, MaxSectionsPerSite = 256;
+
+        /// <summary>
+        /// Turns one clone of the template into the construction site of a blueprint part: its sections with their own
+        /// final meshes, its slots (prerequisites only inside the part), area, blueprint board and baked topology.
+        /// The first part also carries the plinth and the scaffold.
+        /// </summary>
+        private static ConstructionSite BuildPart(Blueprint bp, PartSpec part, int partIndex, int[] partOfSection, GameObject clone,
+            Vector3 origin, Quaternion rot, Dictionary<string, ConstructionSlot> slotByDef, Dictionary<string, BrickRecord> recByDef,
+            BrickVisual[] visuals, Vector3 min, Vector3 max, PlacementSlot[] placementSlots)
+        {
+            int[] mine = Enumerable.Range(0, bp.bricks.Length).Where(i => partOfSection[bp.bricks[i].s] == partIndex).ToArray();
+            int nSec = part.sections.Length;
+            if (mine.Length > MaxSlotsPerSite || nSec > MaxSectionsPerSite)
+            {
+                throw new InvalidDataException($"Part '{part.siteId}' has {mine.Length} slots in {nSec} sections; " +
+                    $"the game allows {MaxSlotsPerSite} slots and {MaxSectionsPerSite} sections per site.");
+            }
+            foreach (SceneLifecycleHook hook in clone.GetComponentsInChildren<SceneLifecycleHook>(true))
+            {
+                Object.DestroyImmediate(hook);   // the ConstructionSceneInstaller sits on the House root
+            }
+            // Remember the layer of the house foundation (walkable) for the colliders of our own plinth and scaffold
+            Transform houseGround = clone.transform.Find("House/Base_Ground");
+            int groundLayer = houseGround != null ? houseGround.gameObject.layer : 0;
+            foreach (string child in new[] { "CompletionObjects", "Supply", "House" })
+            {
+                Transform t = clone.transform.Find(child);
+                if (t != null)
+                {
+                    Object.DestroyImmediate(t.gameObject);
+                }
+            }
+            ConstructionSite site = clone.GetComponent<ConstructionSite>();
+            Site("completedPrompts").SetValue(site, null);
+            Site("completionObject").SetValue(site, null);
+            Site("preCompletionObject").SetValue(site, null);
+            Site("constructionFrame").SetValue(site, null);
+            var oldSections = (ConstructionSection[])Site("sections").GetValue(site);
+            ConstructionSection sectionTemplate = oldSections[0];
+            for (int i = 1; i < oldSections.Length; i++)
+            {
+                Object.DestroyImmediate(oldSections[i].gameObject);
+            }
+            for (int i = sectionTemplate.transform.childCount - 1; i >= 0; i--)
+            {
+                Object.DestroyImmediate(sectionTemplate.transform.GetChild(i).gameObject);
+            }
+            clone.transform.SetPositionAndRotation(origin, rot);
+            Transform stand = clone.transform.Find("Blueprint");
+            float[] standPose = part.blueprintStand ?? bp.blueprintStand;
+            if (stand != null && standPose != null && standPose.Length >= 2)
+            {
+                // Keep the template's height and tilt, only move it and turn it around the vertical axis
+                stand.localPosition = new Vector3(standPose[0], stand.localPosition.y, standPose[1]);
+                if (standPose.Length >= 3)
+                {
+                    stand.localRotation = Quaternion.Euler(0f, standPose[2], 0f) * stand.localRotation;
+                }
+            }
+
+            // ---- Sections with their own final mesh ----
+            var localOf = new Dictionary<int, int>();
+            var sections = new ConstructionSection[nSec];
+            var finalRoots = new GameObject[nSec];
+            for (int k = 0; k < nSec; k++)
+            {
+                string name = bp.sections[part.sections[k]];
+                localOf[part.sections[k]] = k;
+                GameObject secGo = Object.Instantiate(sectionTemplate.gameObject, sectionTemplate.transform.parent);
+                secGo.name = "Section_" + name;
+                secGo.transform.SetPositionAndRotation(origin, rot);
+                sections[k] = secGo.GetComponent<ConstructionSection>();
+                Section("displayName").SetValue(sections[k], name);
+                var fr = new GameObject(name + "_FinalStaticMesh");
+                fr.transform.SetParent(secGo.transform, false);
+                fr.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+                fr.SetActive(false);
+                finalRoots[k] = fr;
+            }
+            Object.DestroyImmediate(sectionTemplate.gameObject);
+
+            // Site area: PlacementSlot.IsPlayerInside checks placeTrigger -> it must be the area of THIS site
+            if (!(Site("constructionArea").GetValue(site) is Collider siteArea) || !siteArea.isTrigger)
+            {
+                throw new InvalidOperationException("The template's site area is missing or not a trigger.");
+            }
+
+            // ---- Slots (IDs over the whole blueprint) ----
+            var slotOf = new Dictionary<int, ConstructionSlot>(mine.Length);
+            int foreignRefs = 0;
+            foreach (int i in mine)
+            {
+                BrickSpec b = bp.bricks[i];
+                ConstructionSlot tmpl = slotByDef[b.def];
+                GameObject go = Object.Instantiate(tmpl.gameObject, sections[localOf[b.s]].transform);
+                go.name = $"Slot_{i:00000}_{b.def}";
+                go.transform.SetPositionAndRotation(origin + rot * new Vector3(b.p[0], b.p[1], b.p[2]), rot * b.Rotation);
+                PlacementSlot ps = go.GetComponent<PlacementSlot>();
+                ConstructionSlot cs = go.GetComponent<ConstructionSlot>();
+                Placement("slotId").SetValue(ps, new PlacementSlotId(IdBase + 1u + (uint)i));
+                Slot("placementSlot").SetValue(cs, ps);
+                Slot("manualPrerequisites").SetValue(cs, true);
+                Slot("prerequisiteMode").SetValue(cs, (ConstructionPrerequisiteMode)b.mode);
+                Slot("finalVisualRoot").SetValue(cs, finalRoots[localOf[b.s]]);
+                Placement("placeTrigger").SetValue(ps, siteArea);
+                foreach (string f in new[] { "placementAnchor", "hologramRoot", "ruleProvider" })
+                {
+                    object refValue = Placement(f).GetValue(ps);
+                    Transform refTransform = refValue is Component c && c != null ? c.transform
+                        : refValue is GameObject g && g != null ? g.transform : null;
+                    if (refTransform != null && !refTransform.IsChildOf(go.transform))
+                    {
+                        foreignRefs++;
+                        if (foreignRefs <= 3)
+                        {
+                            Plugin.Log.LogWarning($"Slot {i}: '{f}' points to '{refTransform.name}' outside the slot.");
+                        }
+                    }
+                }
+                slotOf[i] = cs;
+                placementSlots[i] = ps;
+            }
+            if (foreignRefs > 0)
+            {
+                Plugin.Log.LogWarning($"{foreignRefs} slot references point outside the clone (template shares objects).");
+            }
+            int dropped = 0;
+            foreach (int i in mine)
+            {
+                int[] req = bp.bricks[i].req ?? new int[0];
+                ConstructionSlot[] pre = req.Where(slotOf.ContainsKey).Select(j => slotOf[j]).ToArray();
+                dropped += req.Length - pre.Length;
+                Slot("prerequisites").SetValue(slotOf[i], pre);
+            }
+            var perSection = new List<ConstructionSlot>[nSec];
+            for (int k = 0; k < nSec; k++)
+            {
+                perSection[k] = new List<ConstructionSlot>();
+            }
+            foreach (int i in mine)
+            {
+                perSection[localOf[bp.bricks[i].s]].Add(slotOf[i]);
+            }
+            for (int k = 0; k < nSec; k++)
+            {
+                if (perSection[k].Count == 0)
+                {
+                    throw new InvalidDataException($"Section '{bp.sections[part.sections[k]]}' has no bricks.");
+                }
+                Section("slots").SetValue(sections[k], perSection[k].ToArray());
+            }
+
+            // ---- Final meshes: one combined mesh per section (shown instead of the single bricks once a section is complete) ----
+            for (int k = 0; k < nSec; k++)
+            {
+                int sec = part.sections[k];
+                GameObject fin = CombinedBricks(bp.sections[sec] + "_Mesh",
+                    mine.Select(i => bp.bricks[i]).Where(b => b.s == sec).Select(b => (b.def, b.p, b.Rotation)), recByDef, visuals, finalRoots[k].transform, true);
+                fin?.transform.SetPositionAndRotation(origin, rot);
+            }
+
+            // ---- Bake the topology (as the Unity editor does for the original sites) ----
+            var specs = new List<ConstructionSlotSpec>(mine.Length);
+            for (int k = 0; k < nSec; k++)
+            {
+                foreach (ConstructionSlot cs in perSection[k])
+                {
+                    PlacementSlotId[] pre = cs.Prerequisites.Select(p => p.PlacementSlot.SlotId).ToArray();
+                    specs.Add(new ConstructionSlotSpec(cs.PlacementSlot.SlotId, cs.ExpectedDefinition.DefinitionId, k, pre, cs.PrerequisiteMode));
+                }
+            }
+            Site("siteId").SetValue(site, part.siteId);
+            Site("displayName").SetValue(site, part.displayName);
+            Site("sections").SetValue(site, sections);
+            Site("bakedSpecs").SetValue(site, specs.ToArray());
+            Site("bakedSectionCount").SetValue(site, nSec);
+
+            if (siteArea is BoxCollider area)
+            {
+                area.center = new Vector3((min.x + max.x) / 2f, (max.y + 2f) / 2f, (min.z + max.z) / 2f);
+                area.size = new Vector3(max.x - min.x + 6f, max.y + 4f, max.z - min.z + 6f);
+            }
+            else
+            {
+                Plugin.Log.LogWarning("Site area is not a BoxCollider, the template's size is kept.");
+            }
+
+            if (partIndex == 0)
+            {
+                BuildFoundation(bp, clone.transform, recByDef, visuals, groundLayer);
+                BuildScaffold(bp, clone.transform, groundLayer);
+            }
+
+            // Blueprint board: our own 3D model instead of the house (the board requires a single mesh without children)
+            var preview = clone.GetComponentInChildren<ConstructionBlueprintPreview>(true);
+            if (preview != null)
+            {
+                IEnumerable<(string, float[], Quaternion)> items = mine.Select(i => bp.bricks[i]).Select(b => (b.def, b.p, b.Rotation));
+                if (bp.parts == null)
+                {
+                    items = items.Concat((bp.decor ?? new DecorSpec[0]).Select(d => (d.def, d.p, d.Rotation)));
+                }
+                GameObject model = BuildPreviewModel(part.siteId, items, recByDef, visuals, clone.transform);
+                if (model != null)
+                {
+                    AccessTools.Field(typeof(ConstructionBlueprintPreview), "modelPrefab").SetValue(preview, model);
+                }
+            }
+
+            if (!site.ValidateAuthoredReferences(out string issue))
+            {
+                throw new InvalidOperationException($"Site validation failed for '{part.siteId}': " + issue);
+            }
+            try
+            {
+                SiteGetBakedSpecs.Invoke(site, null);
+            }
+            catch (TargetInvocationException tie)
+            {
+                throw new InvalidOperationException($"Invalid topology in '{part.siteId}': " + tie.InnerException?.Message);
+            }
+            Plugin.Log.LogInfo($"Part '{part.siteId}': {mine.Length} slots in {nSec} sections" +
+                (dropped > 0 ? $", {dropped} prerequisites into other parts dropped." : "."));
+            return site;
+        }
+
         /// <summary>
         /// Preview model for the blueprint board: all bricks + decor bricks as one mesh, one submesh per material.
         /// The template lives in an inactive container under the site; the board instantiates it (active) into its preview rig.
         /// </summary>
-        private static GameObject BuildPreviewModel(Blueprint bp, Dictionary<string, BrickRecord> recByDef, BrickVisual[] visuals, Transform siteRoot)
+        private static GameObject BuildPreviewModel(string name, IEnumerable<(string, float[], Quaternion)> items,
+            Dictionary<string, BrickRecord> recByDef, BrickVisual[] visuals, Transform siteRoot)
         {
             var shelf = new GameObject("Templates");
             shelf.SetActive(false);
             shelf.transform.SetParent(siteRoot, false);
-            var items = bp.bricks.Select(b => (b.def, b.p, b.Rotation)).Concat((bp.decor ?? new DecorSpec[0]).Select(d => (d.def, d.p, d.Rotation)));
-            GameObject model = CombinedBricks(bp.siteId + "_PreviewModel", items, recByDef, visuals, shelf.transform, false);
+            GameObject model = CombinedBricks(name + "_PreviewModel", items, recByDef, visuals, shelf.transform, false);
             if (model == null)
             {
                 Plugin.Log.LogWarning("Preview model: no readable brick meshes, the board keeps showing the template.");
@@ -546,6 +652,132 @@ namespace ExtraBuildings
                 go.transform.localPosition = new Vector3(b.c[0], b.c[1], b.c[2]);
                 go.transform.localRotation = Quaternion.identity;
                 go.AddComponent<BoxCollider>().size = new Vector3(b.s[0], b.s[1], b.s[2]);
+            }
+        }
+
+        /// <summary>
+        /// Scaffold of the blueprint: all parts as one mesh with the game's scaffolding material, plus a walkable
+        /// BoxCollider per upright part (rotated parts such as braces are visuals only).
+        /// </summary>
+        private static void BuildScaffold(Blueprint bp, Transform root, int groundLayer)
+        {
+            if (bp.scaffold == null || bp.scaffold.Length == 0)
+            {
+                return;
+            }
+            Material mat = FindMaterial("M_Scaffolding") ?? FindMaterial("M_Pallet");
+            GameObject primitive = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Mesh cube = primitive.GetComponent<MeshFilter>().sharedMesh;
+            Object.DestroyImmediate(primitive);
+            // M_Scaffolding is a texture atlas of the game's scaffold lift (measured): planks use a plain part of a deck
+            // plate, uprights, rails and braces a red pole stripe. Without that the boxes show the whole atlas.
+            Mesh plankMesh = AtlasCube(cube, new Rect(0.35f, 0.335f, 0.12f, 0.09f));
+            Mesh poleMesh = AtlasCube(cube, new Rect(0.555f, 0.10f, 0.055f, 0.75f));
+            var container = new GameObject("Scaffold");
+            container.transform.SetParent(root, false);
+            var parts = new List<CombineInstance>(bp.scaffold.Length);
+            int solid = 0;
+            foreach (float[] b in bp.scaffold)
+            {
+                var c = new Vector3(b[0], b[1], b[2]);
+                var s = new Vector3(b[3], b[4], b[5]);
+                Quaternion r = b.Length >= 9 ? Quaternion.Euler(b[6], b[7], b[8]) : Quaternion.identity;
+                bool slim = b.Length >= 9 || Mathf.Min(s.x, s.z) < 0.15f;
+                parts.Add(new CombineInstance { mesh = slim ? poleMesh : plankMesh, transform = Matrix4x4.TRS(c, r, s) });
+                if (b.Length < 9)
+                {
+                    var go = new GameObject("ScaffoldCollider") { layer = groundLayer };
+                    go.transform.SetParent(container.transform, false);
+                    go.transform.localPosition = c;
+                    go.AddComponent<BoxCollider>().size = s;
+                    solid++;
+                }
+            }
+            var mesh = new Mesh { name = "Scaffold", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+            mesh.CombineMeshes(parts.ToArray(), true, true);
+            mesh.RecalculateBounds();
+            var visual = new GameObject("ScaffoldVisual");
+            visual.transform.SetParent(container.transform, false);
+            visual.AddComponent<MeshFilter>().sharedMesh = mesh;
+            MeshRenderer renderer = visual.AddComponent<MeshRenderer>();
+            if (mat != null)
+            {
+                renderer.sharedMaterial = mat;
+            }
+            string matName = mat != null ? mat.name : "(none)";
+            Plugin.Log.LogInfo($"Scaffold: {bp.scaffold.Length} parts, {solid} colliders, material {matName}.");
+        }
+
+        /// <summary>Copy of a mesh with all UVs squeezed into one rectangle of the texture.</summary>
+        private static Mesh AtlasCube(Mesh source, Rect area)
+        {
+            var mesh = Object.Instantiate(source);
+            Vector2[] uv = mesh.uv;
+            for (int i = 0; i < uv.Length; i++)
+            {
+                uv[i] = new Vector2(area.xMin + uv[i].x * area.width, area.yMin + uv[i].y * area.height);
+            }
+            mesh.uv = uv;
+            return mesh;
+        }
+
+        private static Material FindMaterial(string name)
+        {
+            return Resources.FindObjectsOfTypeAll<Material>().FirstOrDefault(m => m.name == name);
+        }
+
+        /// <summary>Fills the pile rectangles one after the other: columns along x, rows along z, a new row per brick type.</summary>
+        private sealed class AreaCursor
+        {
+            private readonly float[][] areas;
+            private readonly float groupGap;
+            private int area;
+            private float x, z, rowDepth;
+
+            internal bool Overflow { get; private set; }
+
+            internal AreaCursor(float[][] areas, float groupGap)
+            {
+                this.areas = areas;
+                this.groupGap = groupGap;
+                x = areas[0][0];
+                z = areas[0][1];
+            }
+
+            internal void NewGroup()
+            {
+                if (rowDepth > 0f)
+                {
+                    x = areas[area][0];
+                    z += rowDepth + groupGap;
+                    rowDepth = 0f;
+                }
+            }
+
+            internal Vector2 Next(float cellX, float cellZ)
+            {
+                while (true)
+                {
+                    float[] r = areas[area];
+                    if (x + cellX > r[2] + 1e-4f)
+                    {
+                        x = r[0];
+                        z += rowDepth;
+                        rowDepth = 0f;
+                    }
+                    if (z + cellZ <= r[3] + 1e-4f || area + 1 >= areas.Length)
+                    {
+                        Overflow |= z + cellZ > r[3] + 1e-4f;
+                        var c = new Vector2(x + cellX / 2f, z + cellZ / 2f);
+                        x += cellX;
+                        rowDepth = Math.Max(rowDepth, cellZ);
+                        return c;
+                    }
+                    area++;
+                    x = areas[area][0];
+                    z = areas[area][1];
+                    rowDepth = 0f;
+                }
             }
         }
 

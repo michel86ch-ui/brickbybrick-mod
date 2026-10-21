@@ -1,4 +1,4 @@
-# ExtraBuildings 0.3.1
+# ExtraBuildings 0.4.1
 
 Extra construction sites from a blueprint (JSON). Active only in a **mod-map session** (`ModMapEnabled = true`);
 every world choice then opens the mod world (default `singleplayer-4`). In a normal session the mod does nothing and
@@ -7,22 +7,37 @@ locks the mod world. A button top left in the main menu switches the mode and re
 ## How it works
 
 1. Prefix on `GameSceneInstaller.OnSceneEnterAsync` (before the slots are registered), only in a mod-map session.
-2. Clone of the template `house` in an inactive holder: without `ConstructionSceneInstaller` (it sits on the House
-   root), without `CompletionObjects`, `Supply`, `House`. Kept: blueprint board, progress display, timelapse, effect.
-3. Sections from the blueprint, each with its own final mesh (combined from the catalog visuals).
-4. Brick slots = clones of an original slot of the same brick definition, slot IDs 900000001+,
-   `placeTrigger` = site area of the new site.
-5. Plinth made of game bricks (visuals only, one mesh) + walkable colliders; 3D model for the blueprint board.
-6. Bake the topology, check with the game's `ValidateAuthoredReferences` + `GetBakedSpecs`.
-7. New brick catalog = original + the blueprint's material (brick IDs 900000001+), supply next to the site.
-8. Only then: swap the catalog, append slots and site to the game's lists. On any error the world loads without it.
+2. One clone of the template `house` per blueprint part, in an inactive holder: without `ConstructionSceneInstaller`
+   (it sits on the House root), without `CompletionObjects`, `Supply`, `House`. Kept: blueprint board, progress
+   display, timelapse, effect.
+3. Every part becomes its own construction site. The game allows at most **8192 slots and 256 sections per site**
+   (measured in `ConstructionStateNetworkSynchronizer`), so a large building is split into parts, like the town's own
+   buildings. Prerequisites stay inside a part.
+4. Sections from the blueprint, each with its own final mesh (combined from the catalog visuals).
+5. Brick slots = clones of an original slot of the same brick definition, slot IDs 900000001+ over the whole
+   blueprint, `placeTrigger` = site area of the part.
+6. The first part carries the plinth (game bricks, visuals only, one mesh, plus walkable colliders) and the scaffold
+   (see below). Every part gets its own 3D model on its blueprint board.
+7. Bake the topology, check with the game's `ValidateAuthoredReferences` + `GetBakedSpecs`.
+8. New brick catalog = original + the blueprint's material (brick IDs 900000001+), supply next to the site.
+9. Only then: swap the catalog, append slots and sites to the game's lists. On any error the world loads without them.
    With `RemoveVanillaBuildings` the seven original sites are hidden and their slots, bricks and sites leave the
    game's lists; the catalog then holds only the blueprint's bricks.
-9. `AppBootstrap.ConfigureHostSaveSlot`: mod-map session -> every choice becomes the mod world; normal session -> mod world locked.
-10. `ConstructionSceneInstaller.OnSceneEnterAsync`: installers left without a site are skipped (the game's
+10. `AppBootstrap.ConfigureHostSaveSlot`: mod-map session -> every choice becomes the mod world; normal session -> mod world locked.
+11. `ConstructionSceneInstaller.OnSceneEnterAsync`: installers left without a site are skipped (the game's
     `ConstructionStateNetworkSynchronizer` requires 1 to 32 sites).
-11. Main-menu button: saves `ModMapEnabled`, starts a hidden PowerShell that waits for the game to exit and then
+12. `ConstructionSite.ObserveLocalPlayer`: the parts of a building share one area, so only the part whose bricks are
+    nearest to the player shows its progress panel. Placing is not affected (`PlacementSlot.IsPlayerInside` checks
+    the area collider itself).
+13. Main-menu button: saves `ModMapEnabled`, starts a hidden PowerShell that waits for the game to exit and then
     opens `steam://rungameid/5228920`, and quits the game.
+
+### Scaffold
+
+Boxes from the blueprint, all in one mesh with the game's `M_Scaffolding` material. That material is a texture atlas
+of the scaffold lift, so the boxes map their UVs onto a plain part of it (planks: a deck plate, uprights, rails and
+braces: a red pole stripe). Upright boxes get a walkable `BoxCollider` on the layer of the house foundation; rotated
+boxes (braces) are visuals only.
 
 ## Settings (`BepInEx\config\michel.brickbybrick.extrabuildings.cfg`)
 
@@ -31,18 +46,25 @@ locks the mod world. A button top left in the main menu switches the mode and re
 | General / ModMapEnabled | false | true = start the game as mod map (takes effect at the next start) |
 | General / RemoveVanillaBuildings | true | Mod map only: remove the seven original buildings and their bricks |
 | General / World | singleplayer-4 | World slot of the mod map |
-| General / Blueprint | garage.json | File in the plugin folder (`garage.json`, `roundtest.json`) |
-| Site / X, Z | 0, 0 | Footprint center (town center) |
-| Site / Rotation | 0 | Rotation in degrees |
+| General / Blueprint | garage.json | File in the plugin folder (`garage.json`, `roundtest.json`, `notredame.json`) |
+| Site / X, Z | 0, 0 | Footprint center (town center); the Notre-Dame expects X 3.5, Z 0.4 |
+| Site / Rotation | 0 | Rotation in degrees; the Notre-Dame expects 180 (west front towards the spawn) |
 | Site / MoveKey | F9 | Move the site 4 m in front of you, door facing you; takes effect at the next game start |
 
 ## Blueprint format (`blueprints\*.json`, generated by `tools\gen_*.py`)
 
 `siteId`, `displayName`, `templateSite`, `sections[]`, `blueprintStand [x, z, degrees]`,
-`pile {x, z, gap, perRow, stack}`, `colliders[] {c, s}`, `decor[] {def, p, yaw}` (visuals only),
-`bricks[]` with `def` (asset name of the brick definition), `p` (brick center in m, local, y above ground), `yaw`,
-`pitch` (optional tilt around the brick's x axis, Unity Euler order pitch then yaw; -90 lays a 2x1x2 block flat),
-`s` (section), `mode` (0 = all prerequisites, 1 = any one is enough), `req` (indices).
+`pile {x, z, gap, perRow, stack, maxHeight, areas}`, `colliders[] {c, s}`, `decor[] {def, p, yaw, pitch}` (visuals
+only), `scaffold[]`, `parts[]`, and `bricks[]` with `def` (asset name of the brick definition), `p` (brick center in
+m, local, y above ground), `yaw`, `pitch` (optional tilt around the brick's x axis, Unity Euler order pitch then yaw;
+-90 lays a 2x1x2 block flat), `s` (section), `mode` (0 = all prerequisites, 1 = any one is enough), `req` (indices).
+
+- `parts[] {siteId, displayName, sections[], blueprintStand}`: optional, one construction site per part; every
+  section belongs to exactly one part. Without parts the whole blueprint is one site.
+- `scaffold[]`: `[cx, cy, cz, sx, sy, sz]` = walkable box, `[cx, cy, cz, sx, sy, sz, pitch, yaw, roll]` = rotated
+  box, visuals only.
+- `pile.areas`: local rectangles `[x0, z0, x1, z1]` filled one after the other; `pile.maxHeight` caps the stacks
+  (meters). Without areas the supply grows in rows of `perRow` from `x, z`.
 
 Positions and angles are free, the game does not need its grid: `ConstructionSiteState.CanPlace` checks only that the
 slot is free, its section open and its prerequisites met, no geometry. Blocks may therefore stand at small angles
@@ -62,6 +84,17 @@ bond), a window framed like the game's house (upright 2x1x2 blocks as jambs, lyi
 "2x2 Window" sill) and a 45 degree cone of roof-tile rings with a yellow block on top. 311 bricks in 3 sections;
 prerequisites: any piece whose top carries the brick within 4 cm and 0.45 m.
 
+## Notre-Dame (notredame.json, from `tools\gen_notredame.py 1.2`)
+
+24,291 bricks in 26 sections and five construction sites: west front 4,178, bell towers 4,931, nave 6,572, transept
+and choir 7,309, drum and spire 1,301. Prerequisites: a brick needs a brick of its part that carries it; a brick
+without one (slabs over the hollow towers, lintels over openings, walls rising above the aisles) needs a neighbour in
+the same layer that is itself connected to a carried brick, so layers grow from their supported edge like in the
+original buildings. 76 bricks stay free to place (the lowest clerestory row, whose neighbours belong to other parts).
+Plinth 0.42 m with a 0.21 m step all around (the player climbs at most 0.30 m). Supply: three areas west of the
+cathedral, south of the choir and east of the transept stair, stacks up to 2.3 m. Scaffold: 779 boxes, walkways
+1.3 m wide (the player is 1 m wide), all uprights on the plinth.
+
 ## Tested in game
 
 - 0.1.0: brick slots, holograms, snapping, progress per section, blueprint board counts along, finished sections stay
@@ -71,11 +104,16 @@ prerequisites: any piece whose top carries the brick within 4 cm and 0.45 m.
   garage stands in the town center; a new mod world can be created and an existing one reopened with its progress.
 - 0.3.1: round test tower built to completion: angled, slightly overlapping blocks snap in, lying (pitch -90) frame
   blocks, ring roof (no flickering thanks to the 5 mm lift), final meshes and "Construction complete".
+- 0.4.0: the Notre-Dame loads as five construction sites with plinth, brick supply, five blueprint boards and the
+  scaffold. Seen: the scaffold showed the whole texture atlas, uprights stood on roofs not built yet, stair steps had
+  nothing under them, and all five progress panels showed at once.
+- 0.4.1: fixes for those four points (atlas UVs, uprights on the plinth, stringers and ledgers, one progress panel).
+  **Not yet tested in game.**
 
 ## Open
 
-- Saving and reloading the mod world.
-- Does the finished garage grant skill points (`construction-building` + building ID)?
+- Building the Notre-Dame: reach from the scaffold, load and frame rate with 24,000 bricks, saving.
+- Does a finished building grant skill points (`construction-building` + building ID)?
 - The tutorial hints still run in the mod world (e.g. "open the skill tree").
 - Moving a site in a world with placed bricks leaves those bricks behind (they are saved with their world
   position); the mod should refuse to move a site that has bricks on it.

@@ -18,7 +18,7 @@ namespace ExtraBuildings
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Guid = "michel.brickbybrick.extrabuildings";
-        public const string Version = "0.3.1";
+        public const string Version = "0.4.1";
         private const string SteamAppId = "5228920";
 
         internal static ManualLogSource Log;
