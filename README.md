@@ -61,13 +61,18 @@ that already has bricks on it: they would stay behind at the old place. Delete t
 
 ## Installation
 
-1. Unpack [BepInEx 5.4.23.5 x64](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.5) into the game folder.
-2. Build the mod (see below) – `ExtraBuildings.dll` and `blueprints\garage.json` end up in `BepInEx\plugins\ExtraBuildings\`.
-3. Start the game and click **Start Mod Map** top left in the main menu; the game restarts as mod map.
-4. Choose any world -> mod world (world slot 4). The town is empty, the garage stands in its center.
+1. Download **[BrickByBrick-ExtraBuildings-0.5.0.zip](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest)**
+   and unzip everything into the game folder, so that `winhttp.dll` sits next to `BrickByBrick.exe`
+   (Steam: right-click the game > Manage > Browse local files).
+2. Start the game and click **Start Mod Map** top left in the main menu. The game restarts.
+3. **Important: create a new save in slot 4.** The Notre-Dame is built in that world only. Slot 4 must be empty – an
+   existing world there would be opened as the mod world.
 
-Uninstall: delete `winhttp.dll`, `doorstop_config.ini`, `.doorstop_version`, `changelog.txt` and the `BepInEx` folder
-in the game folder. The game itself is not modified.
+Back to your own worlds: **Back to normal worlds** in the main menu. The ZIP contains BepInEx 5.4.23.5 (unmodified),
+the mod with its blueprints and a ready config.
+
+Uninstall: delete `winhttp.dll`, `doorstop_config.ini`, `.doorstop_version`, `changelog.txt`,
+`ExtraBuildings-README.txt` and the `BepInEx` folder in the game folder. The game itself is not modified.
 
 ## Building
 
