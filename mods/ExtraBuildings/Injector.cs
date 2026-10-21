@@ -225,7 +225,7 @@ namespace ExtraBuildings
                     ConstructionSlot tmpl = slotByDef[b.def];
                     GameObject go = Object.Instantiate(tmpl.gameObject, sections[b.s].transform);
                     go.name = $"Slot_{i:0000}_{b.def}";
-                    go.transform.SetPositionAndRotation(origin + rot * new Vector3(b.p[0], b.p[1], b.p[2]), rot * Quaternion.Euler(0f, b.yaw, 0f));
+                    go.transform.SetPositionAndRotation(origin + rot * new Vector3(b.p[0], b.p[1], b.p[2]), rot * b.Rotation);
                     PlacementSlot ps = go.GetComponent<PlacementSlot>();
                     ConstructionSlot cs = go.GetComponent<ConstructionSlot>();
                     Placement("slotId").SetValue(ps, new PlacementSlotId(IdBase + 1u + (uint)i));
@@ -283,7 +283,7 @@ namespace ExtraBuildings
                 {
                     int sec = s;
                     GameObject fin = CombinedBricks(bp.sections[s] + "_Mesh",
-                        bp.bricks.Where(b => b.s == sec).Select(b => (b.def, b.p, b.yaw)), recByDef, visuals, finalRoots[s].transform, true);
+                        bp.bricks.Where(b => b.s == sec).Select(b => (b.def, b.p, b.Rotation)), recByDef, visuals, finalRoots[s].transform, true);
                     fin?.transform.SetPositionAndRotation(origin, rot);
                 }
 
@@ -440,7 +440,7 @@ namespace ExtraBuildings
             var shelf = new GameObject("Templates");
             shelf.SetActive(false);
             shelf.transform.SetParent(siteRoot, false);
-            var items = bp.bricks.Select(b => (b.def, b.p, b.yaw)).Concat((bp.decor ?? new DecorSpec[0]).Select(d => (d.def, d.p, d.yaw)));
+            var items = bp.bricks.Select(b => (b.def, b.p, b.Rotation)).Concat((bp.decor ?? new DecorSpec[0]).Select(d => (d.def, d.p, d.Rotation)));
             GameObject model = CombinedBricks(bp.siteId + "_PreviewModel", items, recByDef, visuals, shelf.transform, false);
             if (model == null)
             {
@@ -453,20 +453,20 @@ namespace ExtraBuildings
         /// Combine bricks (asset name, local center, rotation) into one mesh, one submesh per material.
         /// Unreadable meshes are attached individually as children if allowed, otherwise skipped.
         /// </summary>
-        private static GameObject CombinedBricks(string name, IEnumerable<(string def, float[] p, float yaw)> items,
+        private static GameObject CombinedBricks(string name, IEnumerable<(string def, float[] p, Quaternion r)> items,
             Dictionary<string, BrickRecord> recByDef, BrickVisual[] visuals, Transform parent, bool allowChildren)
         {
             var groups = new Dictionary<Material, List<CombineInstance>>();
             var order = new List<Material>();
             var loose = new List<(BrickVisual vis, Matrix4x4 m)>();
-            foreach ((string def, float[] p, float yaw) in items)
+            foreach ((string def, float[] p, Quaternion r) in items)
             {
                 BrickVisual vis = visuals[recByDef[def].visualIndex];
                 if (vis.mesh == null)
                 {
                     continue;
                 }
-                Matrix4x4 m = Matrix4x4.TRS(new Vector3(p[0], p[1], p[2]), Quaternion.Euler(0f, yaw, 0f), Vector3.one) * vis.localMatrix;
+                Matrix4x4 m = Matrix4x4.TRS(new Vector3(p[0], p[1], p[2]), r, Vector3.one) * vis.localMatrix;
                 if (!vis.mesh.isReadable)
                 {
                     loose.Add((vis, m));
@@ -538,7 +538,7 @@ namespace ExtraBuildings
             container.transform.SetParent(root, false);
             container.transform.localPosition = Vector3.zero;
             container.transform.localRotation = Quaternion.identity;
-            CombinedBricks("Plinth", (bp.decor ?? new DecorSpec[0]).Select(d => (d.def, d.p, d.yaw)), recByDef, visuals, container.transform, true);
+            CombinedBricks("Plinth", (bp.decor ?? new DecorSpec[0]).Select(d => (d.def, d.p, d.Rotation)), recByDef, visuals, container.transform, true);
             foreach (BoxSpec b in bp.colliders ?? new BoxSpec[0])
             {
                 var go = new GameObject("PlinthCollider") { layer = groundLayer };

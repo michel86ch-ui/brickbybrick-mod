@@ -2,8 +2,8 @@
 
 A mod for *Brick by Brick: Tidy Up the Small Town!* (Steam). It adds extra buildings to the game from a blueprint –
 with real brick slots, holograms, construction sections, a blueprint board, a completion message and a build replay,
-just like the original buildings. The first building is a **test garage with 191 bricks**. The goal is a simplified
-**Notre-Dame with roughly 25,000 bricks**.
+just like the original buildings. Test buildings so far: a **garage with 191 bricks** and a **round tower with 311 bricks**.
+The goal is a simplified **Notre-Dame with roughly 25,000 bricks**.
 
 > Unofficial fan mod, not made by the game's developers. This repository contains no game files.
 
@@ -22,6 +22,7 @@ just like the original buildings. The first building is a **test garage with 191
 | Mod map without the seven original buildings and their 18,485 bricks, garage in the town center (0.3.0) | confirmed in game |
 | "Start Mod Map" / "Back to normal worlds" menu button with automatic restart (0.3.0) | confirmed in game |
 | Saving and reloading the mod world | confirmed in game (an older test world reopened with its finished garage) |
+| Round parts: 2x1 blocks along a circle (slightly overlapping), tilted pieces, a cone of roof-tile rings (0.3.1, round test tower with 311 bricks) | confirmed in game |
 | Notre-Dame | planned |
 
 ## Mod map: a separate world instead of the main world
@@ -58,7 +59,8 @@ in the game folder. The game itself is not modified.
 ```
 cd mods\ExtraBuildings
 dotnet build -c Release -p:DeployToGame=true     (copies the DLL + blueprints\*.json into the game)
-py tools\gen_garage.py                            (regenerate the blueprint)
+py tools\gen_garage.py                            (regenerate the garage blueprint)
+py tools\gen_roundtest.py                         (regenerate the round test tower)
 ```
 
 The project references the DLLs directly from the game folder (adjust `GameDir` in the `.csproj` if the game is

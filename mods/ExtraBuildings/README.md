@@ -1,4 +1,4 @@
-# ExtraBuildings 0.3.0
+# ExtraBuildings 0.3.1
 
 Extra construction sites from a blueprint (JSON). Active only in a **mod-map session** (`ModMapEnabled = true`);
 every world choice then opens the mod world (default `singleplayer-4`). In a normal session the mod does nothing and
@@ -31,7 +31,7 @@ locks the mod world. A button top left in the main menu switches the mode and re
 | General / ModMapEnabled | false | true = start the game as mod map (takes effect at the next start) |
 | General / RemoveVanillaBuildings | true | Mod map only: remove the seven original buildings and their bricks |
 | General / World | singleplayer-4 | World slot of the mod map |
-| General / Blueprint | garage.json | File in the plugin folder |
+| General / Blueprint | garage.json | File in the plugin folder (`garage.json`, `roundtest.json`) |
 | Site / X, Z | 0, 0 | Footprint center (town center) |
 | Site / Rotation | 0 | Rotation in degrees |
 | Site / MoveKey | F9 | Move the site 4 m in front of you, door facing you; takes effect at the next game start |
@@ -41,13 +41,26 @@ locks the mod world. A button top left in the main menu switches the mode and re
 `siteId`, `displayName`, `templateSite`, `sections[]`, `blueprintStand [x, z, degrees]`,
 `pile {x, z, gap, perRow, stack}`, `colliders[] {c, s}`, `decor[] {def, p, yaw}` (visuals only),
 `bricks[]` with `def` (asset name of the brick definition), `p` (brick center in m, local, y above ground), `yaw`,
+`pitch` (optional tilt around the brick's x axis, Unity Euler order pitch then yaw; -90 lays a 2x1x2 block flat),
 `s` (section), `mode` (0 = all prerequisites, 1 = any one is enough), `req` (indices).
+
+Positions and angles are free, the game does not need its grid: `ConstructionSiteState.CanPlace` checks only that the
+slot is free, its section open and its prerequisites met, no geometry. Blocks may therefore stand at small angles
+along a circle and overlap a little. Roof tiles in a ring are lifted 5 mm on every other tile, so overlapping tops
+do not lie in one plane (z-fighting).
 
 ## Garage (garage.json)
 
 8 x 12 cells of 0.42 m (3.36 x 5.04 m) on a 0.42 m high plinth, 6 wall layers (2.52 m) + flat roof,
 door 2.52 x 2.10 m. 191 bricks: 91 x `Bakery_Brick_2D1CAFD3` (4x2x2 block), 100 x `Factory_Brick_7CB4833B`
 (2x2x2 block). Sections: lower walls 46, upper walls 49, roof 96. Plinth: 226 decor bricks.
+
+## Round test (roundtest.json)
+
+Round tower on the same plinth as the garage: wall of 2x1 blocks along a circle of 1.575 m radius (8 rows, running
+bond), a window framed like the game's house (upright 2x1x2 blocks as jambs, lying ones stepping into a point,
+"2x2 Window" sill) and a 45 degree cone of roof-tile rings with a yellow block on top. 311 bricks in 3 sections;
+prerequisites: any piece whose top carries the brick within 4 cm and 0.45 m.
 
 ## Tested in game
 
@@ -56,6 +69,8 @@ door 2.52 x 2.10 m. 191 bricks: 91 x `Bakery_Brick_2D1CAFD3` (4x2x2 block), 100 
 - 0.2.0: plinth made of game bricks, garage model on the blueprint board.
 - 0.3.0: menu button restarts into the mod map and back; the original buildings and their bricks are gone, the
   garage stands in the town center; a new mod world can be created and an existing one reopened with its progress.
+- 0.3.1: round test tower built to completion: angled, slightly overlapping blocks snap in, lying (pitch -90) frame
+  blocks, ring roof, final meshes and "Construction complete".
 
 ## Open
 

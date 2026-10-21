@@ -1,5 +1,6 @@
 using System.IO;
 using Newtonsoft.Json;
+using UnityEngine;
 
 #pragma warning disable CS0649 // fields are filled by Newtonsoft.Json
 
@@ -68,6 +69,9 @@ namespace ExtraBuildings
         public string def;
         public float[] p;
         public float yaw;
+        public float pitch;
+
+        internal Quaternion Rotation => Quaternion.Euler(pitch, yaw, 0f);
     }
 
     internal sealed class BrickSpec
@@ -77,10 +81,14 @@ namespace ExtraBuildings
         /// <summary>Brick center in meters, relative to the footprint center at ground level.</summary>
         public float[] p;
         public float yaw;
+        /// <summary>Tilt around the brick's x axis in degrees (Unity Euler order: pitch, then yaw), e.g. -90 for a lying 2x1x2 block.</summary>
+        public float pitch;
         /// <summary>Section index.</summary>
         public int s;
         /// <summary>0 = all prerequisites (All), 1 = any one is enough (Any).</summary>
         public int mode;
         public int[] req;
+
+        internal Quaternion Rotation => Quaternion.Euler(pitch, yaw, 0f);
     }
 }
