@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notre-Dame in the Game</title>
+<meta name="description" content="A simplified Notre-Dame made of 26,092 bricks, shown finished in Brick by Brick: west front, round choir, nave arcades and crossing.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+:root {
+  color-scheme: dark;
+  --paper: #11407a;
+  --paper-deep: #0b2f5c;
+  --grid: rgba(160, 205, 255, 0.13);
+  --line: rgba(170, 210, 255, 0.28);
+  --ink: #eef5ff;
+  --ink-dim: #a9c3e2;
+  --accent: #f4c95d;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "Barlow", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background-color: var(--paper);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ink);
+  font: 16px/1.55 var(--body);
+  padding: 24px max(16px, env(safe-area-inset-left, 0px)) 48px max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 22px; }
+.badge { justify-self: start; font: 700 14px/1 var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: #1c2433; background: var(--accent); padding: 7px 10px 6px; border-radius: 3px; }
+h1 { font: 700 clamp(34px, 6vw, 56px)/1 var(--display); margin: 0; letter-spacing: 0.01em; text-wrap: balance; }
+h1 small { display: block; font-size: 0.42em; font-weight: 500; color: var(--ink-dim); letter-spacing: 0.06em; margin-top: 8px; }
+p { margin: 0; max-width: 72ch; }
+a { color: var(--accent); }
+.gallery { display: grid; gap: 18px; }
+figure { margin: 0; background: var(--paper-deep); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+figure img { display: block; width: 100%; height: auto; }
+figcaption { padding: 10px 14px 12px; color: var(--ink-dim); font-size: 14.5px; }
+.links { display: flex; flex-wrap: wrap; gap: 10px 22px; }
+.note { color: var(--ink-dim); font-size: 14px; }
+@media (min-width: 900px) { .gallery { grid-template-columns: 1fr 1fr; } .gallery figure:first-child { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="badge">In the game</span>
+  <h1>Notre-Dame in the game<small>Extra Buildings mod for Brick by Brick · 21 October 2026</small></h1>
+  <p>
+    The simplified Notre-Dame of the <a href="https://github.com/michel86ch-ui/brickbybrick-mod">Extra Buildings</a> mod, standing
+    finished in the town of Brick by Brick: <strong>26,092 bricks</strong> in five construction sites, from the west front with its
+    bell towers to the round choir and the spire over the crossing. Arcades of pointed arches carry the upper walls inside.
+    For these screenshots the mod's showcase mode places the whole building at once; in a normal game every brick is placed by
+    hand, section by section, with a walkable scaffold up to the spire.
+  </p>
+  <div class="links">
+    <a href="../notre-dame/">3D preview of the design (brick list, construction sections)</a>
+    <a href="https://github.com/michel86ch-ui/brickbybrick-mod">Source code on GitHub</a>
+  </div>
+
+  <div class="gallery">
+    <figure>
+      <img src="notre-dame-1.jpg" width="2560" height="1440" alt="The cathedral's west front: two bell towers with tall belfry openings, a blue rose window and three portals on a pale stone plinth">
+      <figcaption>The west front: two bell towers, the rose window and three portals on the plinth.</figcaption>
+    </figure>
+    <figure>
+      <img src="notre-dame-2.jpg" width="2560" height="1440" alt="The round choir with its curved ambulatory, the transept front with a rose window and portal, the dark spire and the bell towers behind" loading="lazy">
+      <figcaption>From the choir side: the round choir with its ambulatory, the transept front and the spire over the crossing.</figcaption>
+    </figure>
+    <figure>
+      <img src="notre-dame-3.jpg" width="2560" height="1440" alt="Inside the nave: rows of grey pointed arches on paired piers carry the high walls, the west rose window at the far end" loading="lazy">
+      <figcaption>The nave: arcades of pointed arches on paired piers carry the upper walls; the west rose window at the far end.</figcaption>
+    </figure>
+    <figure>
+      <img src="notre-dame-4.jpg" width="2560" height="1440" alt="The crossing: a corner pier rising to the roof, arcades opening into the aisles and the transept front with its rose window" loading="lazy">
+      <figcaption>The crossing: a corner pier, the transept arcades over the aisles and the transept front with its rose window.</figcaption>
+    </figure>
+  </div>
+  <p class="note">Unofficial fan mod, not made by the game's developers. Screenshots from a test world (game interface in German).</p>
+</div>
+</body>
+</html>

@@ -15,19 +15,15 @@ The goal is a simplified **Notre-Dame with roughly 26,000 bricks**: [3D preview 
 
 *Proof of concept for the [Notre-Dame](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/)'s round parts: the 311-brick round test tower, built to completion in the game.*
 
-## Work in progress: Notre-Dame in the game
+## Notre-Dame in the game
 
-First in-game test (2026-10-21): the Notre-Dame loads with 24,291 brick slots in five construction sites, plinth, brick
-supply and the walkable scaffold (0.4.0). The issues seen there (scaffold texture, scaffold parts resting on roofs not
-built yet, stair steps without support, overlapping progress panels) are fixed in 0.4.1. **[Screenshots of the test](https://michel86ch-ui.github.io/brickbybrick-mod/wip/)**
+The simplified Notre-Dame with 26,092 bricks, shown finished in the game with the mod's showcase mode (0.5.0): west
+front with bell towers, round choir, spire over the crossing, and inside arcades of pointed arches that carry the upper
+walls. **[More screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/)**
 
-Second test (2026-10-21, showcase mode of 0.5.0: the cathedral shown finished). Drum, spire roof and bell towers as
-intended. Seen: upper walls inside without anything under them, straight joints in inner corners, scaffold parts in
-the air and a flickering walkway. Fixed since: arcades of pointed arches under every upper wall, interlocking inner
-corners, every scaffold part checked for support and for overlapping faces, the bridge between the spire scaffold and
-the bell towers removed, no scaffold in the showcase. Not yet tested in the game.
+[![Notre-Dame in the game: the west front with its two bell towers, rose window and three portals](docs/showcase/notre-dame-1.jpg)](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/)
 
-[![Work in progress: the Notre-Dame building site in the game](docs/wip/notre-dame-wip-1.jpg)](https://michel86ch-ui.github.io/brickbybrick-mod/wip/)
+[![Inside the nave: arcades of pointed arches carry the upper walls](docs/showcase/notre-dame-3.jpg)](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/)
 
 ## Status (2026-10-21)
 
@@ -41,7 +37,8 @@ the bell towers removed, no scaffold in the showcase. Not yet tested in the game
 | "Start Mod Map" / "Back to normal worlds" menu button with automatic restart (0.3.0) | confirmed in game |
 | Saving and reloading the mod world | confirmed in game (an older test world reopened with its finished garage) |
 | Round parts: 2x1 blocks along a circle (slightly overlapping), tilted pieces, a cone of roof-tile rings without flickering (0.3.1, round test tower with 311 bricks) | confirmed in game |
-| Notre-Dame: design with about 26,100 bricks, [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/) | work in progress: loads in the game as five construction sites (0.4.0) and finished in showcase mode (0.5.0); arcades, interlocking inner corners and the reworked scaffold not yet tested, [screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/wip/) |
+| Notre-Dame with 26,092 bricks, [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/): loads as five construction sites (0.4.0), shown finished in showcase mode (0.5.0) | confirmed in game, [screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/) |
+| Notre-Dame: building it brick by brick, reworked scaffold (0.5.0) | not yet tested |
 
 ## Mod map: a separate world instead of the main world
 

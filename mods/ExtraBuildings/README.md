@@ -130,7 +130,9 @@ where they overlap (flickering).
 - 0.5.0 showcase, first build: the Notre-Dame stands finished and walkable; drum, spire roof and towers as intended.
   Seen: upper walls inside without anything under them, straight joints in inner corners, scaffold parts in the air,
   a flickering walkway where the bridge to the spire scaffold crossed the tower lanes. Fixed since (arcades, 8-neighbour
-  shell, scaffold rework, that bridge removed, no scaffold in the showcase). **Not yet tested in game.**
+  shell, scaffold rework, that bridge removed, no scaffold in the showcase).
+- 0.5.0 showcase after the rework: confirmed in game (screenshots of the west front, the choir side, the nave arcades
+  and the crossing). The reworked scaffold and building in normal mode: **not yet tested in game.**
 
 ## Open
 
