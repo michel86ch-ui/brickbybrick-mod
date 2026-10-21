@@ -30,7 +30,7 @@
     <Reference Include="MultiplayerTemplate.Bootstrap"><HintPath>$(ManagedDir)MultiplayerTemplate.Bootstrap.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
 
-  <!-- Nach dem Build ins Spiel kopieren: dotnet build -c Release -p:DeployToGame=true -->
+  <!-- Copy into the game after the build: dotnet build -c Release -p:DeployToGame=true -->
   <Target Name="DeployToGame" AfterTargets="Build" Condition="'$(DeployToGame)' == 'true'">
     <ItemGroup>
       <Blueprints Include="$(MSBuildThisFileDirectory)..\..\blueprints\*.json" />

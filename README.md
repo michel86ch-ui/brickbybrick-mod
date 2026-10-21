@@ -1,83 +1,83 @@
-# Brick by Brick – Zusatzgebäude (Mod)
+# Brick by Brick – Extra Buildings (Mod)
 
-Mod für *Brick by Brick: Tidy Up the Small Town!* (Steam). Sie baut zusätzliche Gebäude aus einem Bauplan ins Spiel –
-mit echten Steinplätzen, Hologrammen, Bauabschnitten, Bauplan-Tafel, Abschlussmeldung und Baurückblick, genau wie bei
-den Original-Gebäuden. Erstes Gebäude ist eine **Test-Garage mit 191 Steinen**. Ziel ist eine vereinfachte
-**Notre-Dame mit rund 25'000 Steinen**.
+A mod for *Brick by Brick: Tidy Up the Small Town!* (Steam). It adds extra buildings to the game from a blueprint –
+with real brick slots, holograms, construction sections, a blueprint board, a completion message and a build replay,
+just like the original buildings. The first building is a **test garage with 191 bricks**. The goal is a simplified
+**Notre-Dame with roughly 25,000 bricks**.
 
-> Inoffizielle Fan-Mod, nicht von den Entwicklern des Spiels. Das Repository enthält keine Spieldateien.
+> Unofficial fan mod, not made by the game's developers. This repository contains no game files.
 
-![Garage im Bau neben der Bäckerei](docs/modmapBrickByBrick.png)
+![Garage under construction next to the bakery](docs/modmapBrickByBrick.png)
 
-![Bauarbeiten abgeschlossen: Garage mit Baurückblick](docs/modmapBrickByBrick2.png)
+![Construction complete: garage with build replay](docs/modmapBrickByBrick2.png)
 
-## Stand (2026-10-21)
+## Status (2026-10-21)
 
-| Funktion | Stand |
+| Feature | Status |
 |---|---|
-| Steinplätze, Hologramme, Einrasten | im Spiel bestätigt |
-| Fortschritt pro Abschnitt, Bauplan-Tafel rechnet mit | im Spiel bestätigt |
-| Abschnitte fertig (Endnetze), Meldung „Bauarbeiten abgeschlossen“, Baurückblick | im Spiel bestätigt |
-| Sockel aus Spielsteinen, eigenes 3D-Modell auf der Bauplan-Tafel (0.2.0) | gebaut, noch nicht im Spiel geprüft |
-| Speichern und Neuladen der Mod-Welt | noch nicht geprüft |
-| Menüknopf „Mod-Map“ mit Neustart | geplant |
-| Notre-Dame | geplant |
+| Brick slots, holograms, snapping into place | confirmed in game |
+| Progress per section, blueprint board counts along | confirmed in game |
+| Finished sections (final meshes), "Construction complete" message, build replay | confirmed in game |
+| Plinth made of game bricks, own 3D model on the blueprint board (0.2.0) | built, not yet tested in game |
+| Saving and reloading the mod world | not yet tested |
+| "Mod Map" menu button with restart | planned |
+| Notre-Dame | planned |
 
-## Mod-Map: eigene Welt statt Hauptwelt
+## Mod map: a separate world instead of the main world
 
-Ein zusätzliches Gebäude verändert die Gebäudeliste eines Spielstands; das Spiel wertet den Lauf dieser Welt dann nicht
-mehr für die Rangliste. Deshalb baut die Mod nur in einer eigenen Welt, der **Mod-Map** (Standard: Welt-Slot 4).
+An extra building changes the building list of a save; the game then no longer counts that world's run for the
+leaderboard. That is why the mod only builds in a world of its own, the **mod map** (default: world slot 4).
 
-Das Spiel lädt die Stadt-Szene einmal pro Spielstart und öffnet die Welten darin. Der Modus gilt deshalb für die ganze
-Spielsitzung:
+The game loads the town scene once per game start and opens the worlds inside it. The mode therefore applies to the
+whole game session:
 
-| Modus | Verhalten |
+| Mode | Behavior |
 |---|---|
-| normal (Standard) | Mod tut nichts. Die Mod-Welt ist gesperrt, weil das Spiel ohne Mod beim Laden die Steine der Zusatzgebäude verwerfen würde. |
-| Mod-Map | Zusatzgebäude werden eingehängt, jede Weltwahl im Menü öffnet die Mod-Welt, oben links steht „MOD-MAP“. |
+| normal (default) | The mod does nothing. The mod world is locked, because without the mod the game would drop the extra buildings' bricks when loading it. |
+| mod map | Extra buildings are injected, every world choice in the menu opens the mod world, "MOD-MAP" is shown top left. |
 
 ## Installation
 
-1. [BepInEx 5.4.23.5 x64](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.5) ins Spielverzeichnis entpacken.
-2. Mod bauen (siehe unten) – `ExtraBuildings.dll` und `blueprints\garage.json` landen in `BepInEx\plugins\ExtraBuildings\`.
-3. Spiel einmal starten, beenden. In `BepInEx\config\michel.brickbybrick.extrabuildings.cfg` setzen: `Mod-Map aktiv = true`.
-4. Spiel starten, beliebige Welt wählen -> Mod-Welt. Die Garage steht auf der Wiese östlich vom Spawn.
+1. Unpack [BepInEx 5.4.23.5 x64](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.5) into the game folder.
+2. Build the mod (see below) – `ExtraBuildings.dll` and `blueprints\garage.json` end up in `BepInEx\plugins\ExtraBuildings\`.
+3. Start the game once and quit. In `BepInEx\config\michel.brickbybrick.extrabuildings.cfg` set `ModMapEnabled = true`.
+4. Start the game, choose any world -> mod world. The garage stands on the meadow east of the spawn.
 
-Entfernen: `winhttp.dll`, `doorstop_config.ini`, `.doorstop_version`, `changelog.txt` und den Ordner `BepInEx` im
-Spielordner löschen. Das Spiel selbst wird nicht verändert.
+Uninstall: delete `winhttp.dll`, `doorstop_config.ini`, `.doorstop_version`, `changelog.txt` and the `BepInEx` folder
+in the game folder. The game itself is not modified.
 
-## Bauen
+## Building
 
 ```
 cd mods\ExtraBuildings
-dotnet build -c Release -p:DeployToGame=true     (kopiert DLL + blueprints\*.json ins Spiel)
-py tools\gen_garage.py                            (Bauplan neu erzeugen)
+dotnet build -c Release -p:DeployToGame=true     (copies the DLL + blueprints\*.json into the game)
+py tools\gen_garage.py                            (regenerate the blueprint)
 ```
 
-Das Projekt referenziert die DLLs direkt aus dem Spielordner (`GameDir` in der `.csproj` anpassen, falls das Spiel
-woanders liegt).
+The project references the DLLs directly from the game folder (adjust `GameDir` in the `.csproj` if the game is
+installed elsewhere).
 
-| Ordner | Inhalt |
+| Folder | Content |
 |---|---|
-| [mods/ExtraBuildings](mods/ExtraBuildings/) | Die Mod (C#, BepInEx 5 / HarmonyX) |
-| [tools](tools/) | Bauplan-Generatoren (Python) |
-| [blueprints](blueprints/) | Erzeugte Baupläne (JSON) |
+| [mods/ExtraBuildings](mods/ExtraBuildings/) | The mod (C#, BepInEx 5 / HarmonyX) |
+| [tools](tools/) | Blueprint generators (Python) |
+| [blueprints](blueprints/) | Generated blueprints (JSON) |
 | [docs](docs/) | Screenshots |
 
-## Wie das Spiel Gebäude aufbaut
+## How the game builds its buildings
 
-Gemessen im Spielcode (Unity 6000.3.6, Mono) und in den Szenendaten:
+Measured in the game code (Unity 6000.3.6, Mono) and in the scene data:
 
-- Gebäude stehen **nicht im Code**, sondern in der Szene: 7 `ConstructionSite` mit zusammen 18'485 Steinplätzen.
-- Lose Steine: ein `BrickWorldCatalog` mit genau 18'485 Steinen, GPU-instanziert über `BrickWorldSource`.
-- Szenenstart (`GameSceneInstaller.OnSceneEnterAsync`): Steinplätze anmelden -> Steinkatalog registrieren ->
-  Spielstand anwenden. Danach initialisiert je Gebäude ein `ConstructionSceneInstaller` seine Baustelle.
-- Ein Steinplatz ist ein GameObject mit `PlacementSlot` + `ConstructionSlot` und Kind `Hologram`. Slot-ID und Stein-ID
-  sind `uint`. Drehpunkt eines Steins = Mitte, Raster 0.21 m.
-- `PlacementSlot.placeTrigger` ist der Baustellenbereich des Gebäudes: Setzen geht nur, wenn man darin steht.
-- Jede Baustelle hat eine gebackene Topologie (`bakedSpecs`), die `GetBakedSpecs()` streng gegen die Slots prüft.
-- Ist ein Abschnitt fertig, zeigt das Spiel ein zusammengefasstes Netz (`finalVisualRoot`) statt der Einzelsteine.
-- Die Bauplan-Tafel zeigt ein einzelnes vorgefertigtes Netz (`ConstructionBlueprintPreview.modelPrefab`).
-- Fehlende Steine oder Steinplätze brechen das Laden nicht ab: Steine aus entfernten Plätzen gehen an ihren
-  Startplatz, unbekannte Steine werden verworfen.
-- Spielstände sind JSON (EasySave3), die Abschnitte darin Base64-JSON.
+- Buildings are **not in the code** but in the scene: 7 `ConstructionSite`s with 18,485 brick slots in total.
+- Loose bricks: one `BrickWorldCatalog` with exactly 18,485 bricks, GPU-instanced through `BrickWorldSource`.
+- Scene start (`GameSceneInstaller.OnSceneEnterAsync`): register the slots -> register the brick catalog ->
+  apply the save. After that, one `ConstructionSceneInstaller` per building initializes its site.
+- A brick slot is a GameObject with `PlacementSlot` + `ConstructionSlot` and a `Hologram` child. Slot ID and brick ID
+  are `uint`. A brick's pivot is its center, the grid is 0.21 m.
+- `PlacementSlot.placeTrigger` is the building's site area: a brick can only be placed while standing inside it.
+- Every site has a baked topology (`bakedSpecs`) that `GetBakedSpecs()` checks strictly against the slots.
+- Once a section is complete, the game shows a combined mesh (`finalVisualRoot`) instead of the single bricks.
+- The blueprint board shows a single pre-made mesh (`ConstructionBlueprintPreview.modelPrefab`).
+- Missing bricks or slots do not break loading: bricks from removed slots return to their start position,
+  unknown bricks are dropped.
+- Saves are JSON (EasySave3), their sections Base64-encoded JSON.

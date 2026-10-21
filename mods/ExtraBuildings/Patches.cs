@@ -7,9 +7,9 @@ using MultiplayerTemplate.Game.Scenes;
 namespace ExtraBuildings
 {
     /// <summary>
-    /// Weltwahl absichern. Die Spielszene wird nur einmal pro Spielstart geladen, deshalb gilt der Modus fuer die ganze Sitzung:
-    /// Mod-Map-Sitzung -> jede Wahl oeffnet die Mod-Welt. Normale Sitzung -> die Mod-Welt ist gesperrt, weil das Spiel
-    /// ohne die Mod beim Laden die Steine der Zusatzbauten aus dem Spielstand verwerfen wuerde.
+    /// Guards the world choice. The gameplay scene is loaded only once per game start, so the mode applies to the whole session:
+    /// mod-map session -> every choice opens the mod world. Normal session -> the mod world is locked, because without the mod
+    /// the game would drop the extra buildings' bricks from the save when loading it.
     /// </summary>
     [HarmonyPatch(typeof(AppBootstrap), nameof(AppBootstrap.ConfigureHostSaveSlot))]
     internal static class SlotGuardPatch
@@ -22,21 +22,21 @@ namespace ExtraBuildings
             {
                 if (!isTarget)
                 {
-                    Plugin.Log.LogInfo($"Mod-Map-Sitzung: Weltwahl '{slotId}' wird zu '{target}'.");
+                    Plugin.Log.LogInfo($"Mod-map session: world choice '{slotId}' becomes '{target}'.");
                     slotId = target;
                 }
                 return;
             }
             if (isTarget)
             {
-                Plugin.Toast($"'{target}' ist die Mod-Map. Bitte als Mod-Map starten.", 10f);
-                Plugin.Log.LogWarning($"Normale Sitzung: '{target}' ist die Mod-Map und hier gesperrt.");
-                throw new InvalidOperationException($"'{target}' ist die Mod-Map und nur in einer Mod-Map-Sitzung ladbar.");
+                Plugin.Toast($"'{target}' is the mod map. Please start the game as mod map.", 10f);
+                Plugin.Log.LogWarning($"Normal session: '{target}' is the mod map and locked here.");
+                throw new InvalidOperationException($"'{target}' is the mod map and can only be loaded in a mod-map session.");
             }
         }
     }
 
-    /// <summary>Vor dem Szenenstart: Steinplaetze, Katalog und Baustelle einhaengen (GameSceneInstaller laeuft vor ConstructionSceneInstaller).</summary>
+    /// <summary>Before the scene starts: inject slots, catalog and site (GameSceneInstaller runs before ConstructionSceneInstaller).</summary>
     [HarmonyPatch(typeof(GameSceneInstaller), nameof(GameSceneInstaller.OnSceneEnterAsync))]
     internal static class GameSceneInstallerEnterPatch
     {
@@ -46,24 +46,24 @@ namespace ExtraBuildings
         }
     }
 
-    /// <summary>Nur Protokoll: Reihenfolge und Fehler bei der Initialisierung der Baustellen.</summary>
+    /// <summary>Logging only: order and errors of the game's site initialization.</summary>
     [HarmonyPatch(typeof(ConstructionSceneInstaller), nameof(ConstructionSceneInstaller.OnSceneEnterAsync))]
     internal static class ConstructionSceneInstallerEnterPatch
     {
         private static void Prefix()
         {
-            Plugin.Log.LogDebug("ConstructionSceneInstaller.OnSceneEnterAsync beginnt.");
+            Plugin.Log.LogDebug("ConstructionSceneInstaller.OnSceneEnterAsync starts.");
         }
 
         private static Exception Finalizer(Exception __exception)
         {
             if (__exception != null)
             {
-                Plugin.Log.LogError("Baustellen-Initialisierung des Spiels fehlgeschlagen: " + __exception);
+                Plugin.Log.LogError("The game's site initialization failed: " + __exception);
             }
             else
             {
-                Plugin.Log.LogDebug("ConstructionSceneInstaller.OnSceneEnterAsync fertig.");
+                Plugin.Log.LogDebug("ConstructionSceneInstaller.OnSceneEnterAsync done.");
             }
             return __exception;
         }

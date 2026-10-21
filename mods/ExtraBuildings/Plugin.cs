@@ -8,8 +8,8 @@ using UnityEngine;
 namespace ExtraBuildings
 {
     /// <summary>
-    /// Zusaetzliche Baustellen aus einem Bauplan (JSON). Aktiv nur im konfigurierten Welt-Slot,
-    /// alle anderen Welten bleiben unveraendert.
+    /// Extra construction sites from a blueprint (JSON). Active only in a mod-map session in its own world slot;
+    /// all other worlds stay unchanged.
     /// </summary>
     [BepInPlugin(Guid, "ExtraBuildings", Version)]
     public sealed class Plugin : BaseUnityPlugin
@@ -19,7 +19,7 @@ namespace ExtraBuildings
 
         internal static ManualLogSource Log;
         internal static string PluginDir;
-        /// <summary>Modus dieser Spielsitzung, beim Start festgelegt (die Spielszene wird nur einmal geladen).</summary>
+        /// <summary>Mode of this game session, fixed at startup (the gameplay scene is only loaded once).</summary>
         internal static bool ModMapSession;
         internal static ConfigEntry<bool> ModMapActive;
         internal static ConfigEntry<string> TargetSlot;
@@ -36,22 +36,22 @@ namespace ExtraBuildings
         {
             Log = Logger;
             PluginDir = Path.GetDirectoryName(Info.Location);
-            ModMapActive = Config.Bind("Allgemein", "Mod-Map aktiv", false,
-                "true = Spiel startet als Mod-Map: Zusatzbau wird eingehaengt, jede Weltwahl oeffnet die Mod-Welt. " +
-                "false = Mod inaktiv, die Mod-Welt ist gesperrt. Wirkt beim naechsten Spielstart.");
-            TargetSlot = Config.Bind("Allgemein", "Welt", "singleplayer-4",
-                "Welt-Slot der Mod-Map (singleplayer-1 bis singleplayer-4). Andere Welten bleiben unveraendert.");
+            ModMapActive = Config.Bind("General", "ModMapEnabled", false,
+                "true = the game starts as mod map: extra buildings are injected and every world choice opens the mod world. " +
+                "false = mod inactive, the mod world is locked. Takes effect at the next game start.");
+            TargetSlot = Config.Bind("General", "World", "singleplayer-4",
+                "World slot of the mod map (singleplayer-1 to singleplayer-4). Other worlds stay unchanged.");
             ModMapSession = ModMapActive.Value;
-            BlueprintFile = Config.Bind("Allgemein", "Bauplan", "garage.json", "Bauplan-Datei im Plugin-Ordner.");
-            OriginX = Config.Bind("Bauplatz", "X", 12f, "Weltkoordinate X der Grundriss-Mitte.");
-            OriginZ = Config.Bind("Bauplatz", "Z", 42f, "Weltkoordinate Z der Grundriss-Mitte.");
-            Yaw = Config.Bind("Bauplatz", "Drehung", 90f, "Drehung in Grad. Bei 90 zeigt das Tor nach Westen (Richtung Spawn).");
-            MoveKey = Config.Bind("Bauplatz", "Taste", new KeyboardShortcut(KeyCode.F9),
-                "Setzt den Bauplatz 4 m vor dich, Tor zu dir gedreht. Wirkt nach dem naechsten Spielstart.");
+            BlueprintFile = Config.Bind("General", "Blueprint", "garage.json", "Blueprint file in the plugin folder.");
+            OriginX = Config.Bind("Site", "X", 12f, "World X coordinate of the footprint center.");
+            OriginZ = Config.Bind("Site", "Z", 42f, "World Z coordinate of the footprint center.");
+            Yaw = Config.Bind("Site", "Rotation", 90f, "Rotation in degrees. At 90 the door faces west (towards the spawn).");
+            MoveKey = Config.Bind("Site", "MoveKey", new KeyboardShortcut(KeyCode.F9),
+                "Moves the site 4 m in front of you, door facing you. Takes effect at the next game start.");
             new Harmony(Guid).PatchAll(typeof(Plugin).Assembly);
             Log.LogInfo(ModMapSession
-                ? $"ExtraBuildings {Version}: MOD-MAP-Sitzung, Welt '{TargetSlot.Value}', Bauplan '{BlueprintFile.Value}'."
-                : $"ExtraBuildings {Version}: normale Sitzung, Mod inaktiv, Welt '{TargetSlot.Value}' gesperrt.");
+                ? $"ExtraBuildings {Version}: MOD-MAP session, world '{TargetSlot.Value}', blueprint '{BlueprintFile.Value}'."
+                : $"ExtraBuildings {Version}: normal session, mod inactive, world '{TargetSlot.Value}' locked.");
         }
 
         private void Update()
@@ -78,8 +78,8 @@ namespace ExtraBuildings
             OriginZ.Value = Mathf.Round(center.z * 100f) / 100f;
             Yaw.Value = yaw;
             Config.Save();
-            Toast($"Bauplatz gesetzt: X {OriginX.Value:0.0}, Z {OriginZ.Value:0.0}, Drehung {yaw:0}. Wirkt nach Spielneustart.");
-            Log.LogInfo($"Bauplatz per Taste gesetzt: X {OriginX.Value}, Z {OriginZ.Value}, Drehung {yaw}");
+            Toast($"Site moved: X {OriginX.Value:0.0}, Z {OriginZ.Value:0.0}, rotation {yaw:0}. Takes effect after a game restart.");
+            Log.LogInfo($"Site moved by key: X {OriginX.Value}, Z {OriginZ.Value}, rotation {yaw}");
         }
 
         internal static void Toast(string text, float seconds = 6f)

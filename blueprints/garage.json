@@ -3,9 +3,9 @@
  "displayName": "Garage",
  "templateSite": "house",
  "sections": [
-  "W\u00e4nde unten",
-  "W\u00e4nde oben",
-  "Dach"
+  "Lower walls",
+  "Upper walls",
+  "Roof"
  ],
  "blueprintStand": [
   -3.2800000000000002,

@@ -18,14 +18,14 @@ using Object = UnityEngine.Object;
 namespace ExtraBuildings
 {
     /// <summary>
-    /// Baut vor dem Szenenstart (GameSceneInstaller.OnSceneEnterAsync) eine zusaetzliche Baustelle auf:
-    /// Klon der Vorlagen-Baustelle ohne deren Inhalt, eigene Abschnitte und Steinplaetze aus dem Bauplan,
-    /// eigene Endnetze je Abschnitt, erweiterter Steinkatalog mit dem Material. Erst wenn alles gebaut und
-    /// mit den Pruefungen des Spiels validiert ist, werden die Listen des Spiels erweitert.
+    /// Builds an extra construction site before the scene starts (GameSceneInstaller.OnSceneEnterAsync):
+    /// a clone of the template site without its content, own sections and slots from the blueprint,
+    /// own final meshes per section, and an extended brick catalog with the material. The game's lists are only
+    /// extended once everything is built and has passed the game's own validation.
     /// </summary>
     internal static class Injector
     {
-        /// <summary>Slot- und Stein-IDs der Mod: 900000001 aufwaerts (Spiel: Steine 1..18547, Slots ~100000..120000).</summary>
+        /// <summary>Slot and brick IDs of the mod: 900000001 upwards (game: bricks 1..18547, slots ~100000..120000).</summary>
         internal const uint IdBase = 900_000_000u;
 
         private static readonly FieldInfo GsiSlots = AccessTools.Field(typeof(GameSceneInstaller), "authoredPlacementSlots");
@@ -48,16 +48,16 @@ namespace ExtraBuildings
             {
                 if (!Plugin.ModMapSession)
                 {
-                    Plugin.Log.LogInfo("Normale Sitzung: keine Zusatzbauten.");
+                    Plugin.Log.LogInfo("Normal session: no extra buildings.");
                     return;
                 }
                 Scene scene = gsi.gameObject.scene;
-                // Jedes Gebaeude hat einen eigenen ConstructionSceneInstaller (auf der Baustellen-Wurzel)
+                // Every building has its own ConstructionSceneInstaller (on the site root)
                 ConstructionSceneInstaller[] installers = Object.FindObjectsByType<ConstructionSceneInstaller>(FindObjectsInactive.Include, FindObjectsSortMode.None)
                     .Where(c => c.gameObject.scene == scene).ToArray();
                 if (installers.Length == 0)
                 {
-                    Plugin.Log.LogInfo("Szene ohne Baustellen, nichts zu tun.");
+                    Plugin.Log.LogInfo("Scene has no construction sites, nothing to do.");
                     return;
                 }
                 string bpPath = Path.Combine(Plugin.PluginDir, Plugin.BlueprintFile.Value);
@@ -65,24 +65,24 @@ namespace ExtraBuildings
                 ConstructionSite[] allSites = installers.SelectMany(c => (ConstructionSite[])CsiSites.GetValue(c)).Where(s => s != null).ToArray();
                 if (allSites.Any(s => s.SiteId == bp.siteId))
                 {
-                    Plugin.Log.LogInfo($"Baustelle '{bp.siteId}' ist schon eingehaengt.");
+                    Plugin.Log.LogInfo($"Site '{bp.siteId}' is already injected.");
                     return;
                 }
                 if (allSites.Any(s => s.State != null))
                 {
-                    Plugin.Log.LogWarning("Baustellen sind schon initialisiert (unerwartete Reihenfolge), Zusatzbau ausgelassen.");
+                    Plugin.Log.LogWarning("Sites are already initialized (unexpected order), extra building skipped.");
                     return;
                 }
                 BrickWorldSource bws = ((SceneItemSource[])GsiSources.GetValue(gsi)).OfType<BrickWorldSource>().FirstOrDefault();
                 if (bws == null)
                 {
-                    throw new InvalidOperationException("BrickWorldSource nicht gefunden.");
+                    throw new InvalidOperationException("BrickWorldSource not found.");
                 }
                 var catalog = (BrickWorldCatalog)BwsCatalog.GetValue(bws);
                 BrickRecord[] origBricks = catalog.Bricks;
                 BrickVisual[] visuals = catalog.Visuals;
 
-                // Vorlagen je Steindefinition: ein Katalogeintrag (Optik, Kollider, Physik) und ein Steinplatz (Hologramm)
+                // Templates per brick definition: a catalog record (visual, collider, physics) and a slot (hologram)
                 var recByDef = new Dictionary<string, BrickRecord>(StringComparer.Ordinal);
                 foreach (BrickRecord r in origBricks)
                 {
@@ -109,28 +109,28 @@ namespace ExtraBuildings
                 {
                     if (!recByDef.ContainsKey(def) || !slotByDef.ContainsKey(def))
                     {
-                        throw new InvalidDataException($"Steindefinition '{def}' gibt es in dieser Spielversion nicht.");
+                        throw new InvalidDataException($"Brick definition '{def}' does not exist in this game version.");
                     }
                 }
                 foreach (string def in (bp.decor ?? new DecorSpec[0]).Select(d => d.def).Distinct())
                 {
                     if (!recByDef.ContainsKey(def))
                     {
-                        throw new InvalidDataException($"Sockelstein '{def}' gibt es in dieser Spielversion nicht.");
+                        throw new InvalidDataException($"Decor brick '{def}' does not exist in this game version.");
                     }
                 }
                 ConstructionSite template = allSites.FirstOrDefault(s => s.SiteId == bp.templateSite)
-                    ?? throw new InvalidDataException($"Vorlagen-Baustelle '{bp.templateSite}' fehlt.");
-                // Die neue Baustelle kommt in den Installer der Vorlage (dort laufen Initialisierung, Abschluss, Sync, Belohnungen)
+                    ?? throw new InvalidDataException($"Template site '{bp.templateSite}' is missing.");
+                // The new site goes into the template's installer (initialization, completion, sync, rewards run there)
                 ConstructionSceneInstaller csi = installers.First(c => ((ConstructionSite[])CsiSites.GetValue(c)).Contains(template));
                 var sites = (ConstructionSite[])CsiSites.GetValue(csi);
 
                 Quaternion rot = Quaternion.Euler(0f, Plugin.Yaw.Value, 0f);
                 Vector3 origin = new Vector3(Plugin.OriginX.Value, 0f, Plugin.OriginZ.Value);
                 origin.y = GroundY(origin.x, origin.z, out string groundName);
-                Plugin.Log.LogInfo($"Bauplatz {bp.siteId}: ({origin.x:0.00}, {origin.y:0.00}, {origin.z:0.00}), Drehung {Plugin.Yaw.Value}, Boden '{groundName}'.");
+                Plugin.Log.LogInfo($"Site {bp.siteId}: ({origin.x:0.00}, {origin.y:0.00}, {origin.z:0.00}), rotation {Plugin.Yaw.Value}, ground '{groundName}'.");
 
-                // ---- Klon der Vorlage, unsichtbar in einem inaktiven Halter (kein Awake) ----
+                // ---- Clone of the template, hidden in an inactive holder (no Awake) ----
                 holder = new GameObject("ExtraBuildings_Holder");
                 holder.SetActive(false);
                 SceneManager.MoveGameObjectToScene(holder, scene);
@@ -138,9 +138,9 @@ namespace ExtraBuildings
                 clone.name = bp.displayName + "_Construction";
                 foreach (SceneLifecycleHook hook in clone.GetComponentsInChildren<SceneLifecycleHook>(true))
                 {
-                    Object.DestroyImmediate(hook);   // der ConstructionSceneInstaller sitzt auf der House-Wurzel
+                    Object.DestroyImmediate(hook);   // the ConstructionSceneInstaller sits on the House root
                 }
-                // Layer des Haus-Fundaments (begehbar) fuer die Kollider des eigenen Sockels merken
+                // Remember the layer of the house foundation (walkable) for the colliders of our own plinth
                 Transform houseGround = clone.transform.Find("House/Base_Ground");
                 int groundLayer = houseGround != null ? houseGround.gameObject.layer : 0;
                 foreach (string child in new[] { "CompletionObjects", "Supply", "House" })
@@ -170,7 +170,7 @@ namespace ExtraBuildings
                 Transform stand = clone.transform.Find("Blueprint");
                 if (stand != null && bp.blueprintStand != null && bp.blueprintStand.Length >= 2)
                 {
-                    // Hoehe und Neigung der Vorlage behalten, nur verschieben und um die Hochachse drehen
+                    // Keep the template's height and tilt, only move it and turn it around the vertical axis
                     stand.localPosition = new Vector3(bp.blueprintStand[0], stand.localPosition.y, bp.blueprintStand[1]);
                     if (bp.blueprintStand.Length >= 3)
                     {
@@ -178,7 +178,7 @@ namespace ExtraBuildings
                     }
                 }
 
-                // ---- Abschnitte mit eigenem Endnetz ----
+                // ---- Sections with their own final mesh ----
                 int nSec = bp.sections.Length;
                 var sections = new ConstructionSection[nSec];
                 var finalRoots = new GameObject[nSec];
@@ -197,18 +197,16 @@ namespace ExtraBuildings
                 }
                 Object.DestroyImmediate(sectionTemplate.gameObject);
 
-                // Baustellenbereich: PlacementSlot.IsPlayerInside prueft placeTrigger -> muss der Bereich DIESER Baustelle sein
+                // Site area: PlacementSlot.IsPlayerInside checks placeTrigger -> it must be the area of THIS site
                 if (!(Site("constructionArea").GetValue(site) is Collider siteArea) || !siteArea.isTrigger)
                 {
-                    throw new InvalidOperationException("Baustellenbereich der Vorlage fehlt oder ist kein Trigger.");
+                    throw new InvalidOperationException("The template's site area is missing or not a trigger.");
                 }
 
-                // ---- Steinplaetze ----
+                // ---- Slots ----
                 int n = bp.bricks.Length;
                 var slots = new ConstructionSlot[n];
                 var placementSlots = new PlacementSlot[n];
-                var slotPos = new Vector3[n];
-                var slotRot = new Quaternion[n];
                 int foreignRefs = 0;
                 for (int i = 0; i < n; i++)
                 {
@@ -216,9 +214,7 @@ namespace ExtraBuildings
                     ConstructionSlot tmpl = slotByDef[b.def];
                     GameObject go = Object.Instantiate(tmpl.gameObject, sections[b.s].transform);
                     go.name = $"Slot_{i:0000}_{b.def}";
-                    slotPos[i] = origin + rot * new Vector3(b.p[0], b.p[1], b.p[2]);
-                    slotRot[i] = rot * Quaternion.Euler(0f, b.yaw, 0f);
-                    go.transform.SetPositionAndRotation(slotPos[i], slotRot[i]);
+                    go.transform.SetPositionAndRotation(origin + rot * new Vector3(b.p[0], b.p[1], b.p[2]), rot * Quaternion.Euler(0f, b.yaw, 0f));
                     PlacementSlot ps = go.GetComponent<PlacementSlot>();
                     ConstructionSlot cs = go.GetComponent<ConstructionSlot>();
                     Placement("slotId").SetValue(ps, new PlacementSlotId(IdBase + 1u + (uint)i));
@@ -237,7 +233,7 @@ namespace ExtraBuildings
                             foreignRefs++;
                             if (foreignRefs <= 3)
                             {
-                                Plugin.Log.LogWarning($"Slot {i}: '{f}' zeigt auf '{refTransform.name}' ausserhalb des Slots.");
+                                Plugin.Log.LogWarning($"Slot {i}: '{f}' points to '{refTransform.name}' outside the slot.");
                             }
                         }
                     }
@@ -246,7 +242,7 @@ namespace ExtraBuildings
                 }
                 if (foreignRefs > 0)
                 {
-                    Plugin.Log.LogWarning($"{foreignRefs} Slot-Verweise zeigen aus dem Klon heraus (Vorlage teilt Objekte).");
+                    Plugin.Log.LogWarning($"{foreignRefs} slot references point outside the clone (template shares objects).");
                 }
                 for (int i = 0; i < n; i++)
                 {
@@ -266,21 +262,21 @@ namespace ExtraBuildings
                 {
                     if (perSection[s].Count == 0)
                     {
-                        throw new InvalidDataException($"Abschnitt '{bp.sections[s]}' hat keine Steine.");
+                        throw new InvalidDataException($"Section '{bp.sections[s]}' has no bricks.");
                     }
                     Section("slots").SetValue(sections[s], perSection[s].ToArray());
                 }
 
-                // ---- Endnetze: ein zusammengefasstes Netz je Abschnitt (wird bei fertigem Abschnitt statt der Einzelsteine gezeigt) ----
+                // ---- Final meshes: one combined mesh per section (shown instead of the single bricks once a section is complete) ----
                 for (int s = 0; s < nSec; s++)
                 {
                     int sec = s;
-                    GameObject fin = CombinedBricks(bp.sections[s] + "_Netz",
+                    GameObject fin = CombinedBricks(bp.sections[s] + "_Mesh",
                         bp.bricks.Where(b => b.s == sec).Select(b => (b.def, b.p, b.yaw)), recByDef, visuals, finalRoots[s].transform, true);
                     fin?.transform.SetPositionAndRotation(origin, rot);
                 }
 
-                // ---- Topologie backen (so wie der Unity-Editor es fuer die Original-Baustellen tut) ----
+                // ---- Bake the topology (as the Unity editor does for the original sites) ----
                 var specs = new List<ConstructionSlotSpec>(n);
                 for (int s = 0; s < nSec; s++)
                 {
@@ -296,7 +292,7 @@ namespace ExtraBuildings
                 Site("bakedSpecs").SetValue(site, specs.ToArray());
                 Site("bakedSectionCount").SetValue(site, nSec);
 
-                // Baustellenbereich (Trigger) um den Grundriss
+                // Site area (trigger) around the footprint
                 Vector3 min = Vector3.positiveInfinity, max = Vector3.negativeInfinity;
                 foreach (BrickSpec b in bp.bricks)
                 {
@@ -311,12 +307,12 @@ namespace ExtraBuildings
                 }
                 else
                 {
-                    Plugin.Log.LogWarning("Baustellenbereich ist kein BoxCollider, Groesse der Vorlage bleibt.");
+                    Plugin.Log.LogWarning("Site area is not a BoxCollider, the template's size is kept.");
                 }
 
                 BuildFoundation(bp, clone.transform, recByDef, visuals, groundLayer);
 
-                // Bauplan-Tafel: eigenes 3D-Modell statt des Hauses (die Tafel verlangt ein einzelnes Netz ohne Kinder)
+                // Blueprint board: our own 3D model instead of the house (the board requires a single mesh without children)
                 var preview = clone.GetComponentInChildren<ConstructionBlueprintPreview>(true);
                 if (preview != null)
                 {
@@ -329,7 +325,7 @@ namespace ExtraBuildings
 
                 if (!site.ValidateAuthoredReferences(out string issue))
                 {
-                    throw new InvalidOperationException("Pruefung der Baustelle fehlgeschlagen: " + issue);
+                    throw new InvalidOperationException("Site validation failed: " + issue);
                 }
                 try
                 {
@@ -337,10 +333,10 @@ namespace ExtraBuildings
                 }
                 catch (TargetInvocationException tie)
                 {
-                    throw new InvalidOperationException("Topologie ungueltig: " + tie.InnerException?.Message);
+                    throw new InvalidOperationException("Invalid topology: " + tie.InnerException?.Message);
                 }
 
-                // ---- Material: erweiterter Katalog ----
+                // ---- Material: extended catalog ----
                 var newRecords = new BrickRecord[n];
                 var order = Enumerable.Range(0, n).OrderBy(i => bp.bricks[i].def, StringComparer.Ordinal).ToArray();
                 float rowZ = bp.pile.z;
@@ -374,7 +370,7 @@ namespace ExtraBuildings
                 CatBricks.SetValue(newCatalog, origBricks.Concat(newRecords).ToArray());
                 CatVisuals.SetValue(newCatalog, visuals);
 
-                // ---- Einhaengen: erst jetzt werden Listen des Spiels veraendert ----
+                // ---- Inject: only now are the game's lists changed ----
                 BwsCatalog.SetValue(bws, newCatalog);
                 var gsiSlots = (PlacementSlot[])GsiSlots.GetValue(gsi);
                 GsiSlots.SetValue(gsi, gsiSlots.Concat(placementSlots).ToArray());
@@ -383,12 +379,12 @@ namespace ExtraBuildings
                 SceneManager.MoveGameObjectToScene(clone, scene);
                 Object.Destroy(holder);
                 holder = null;
-                Plugin.Log.LogInfo($"Baustelle '{bp.siteId}' eingehaengt: {n} Steinplaetze in {nSec} Abschnitten, {n} Steine im Vorrat, " +
+                Plugin.Log.LogInfo($"Site '{bp.siteId}' injected: {n} slots in {nSec} sections, {n} bricks in the supply, " +
                     $"IDs {IdBase + 1}..{IdBase + (uint)n}.");
             }
             catch (Exception e)
             {
-                Plugin.Log.LogError("Zusatzbau abgebrochen, die Welt laedt ohne ihn: " + e);
+                Plugin.Log.LogError("Extra building aborted, the world loads without it: " + e);
                 if (holder != null)
                 {
                     Object.Destroy(holder);
@@ -397,26 +393,26 @@ namespace ExtraBuildings
         }
 
         /// <summary>
-        /// Vorschaumodell fuer die Bauplan-Tafel: alle Steine + Sockelsteine als ein Netz, ein Teilnetz je Material.
-        /// Die Vorlage liegt in einem inaktiven Behaelter unter der Baustelle; die Tafel instanziert sie (aktiv) in ihr Vorschau-Rig.
+        /// Preview model for the blueprint board: all bricks + decor bricks as one mesh, one submesh per material.
+        /// The template lives in an inactive container under the site; the board instantiates it (active) into its preview rig.
         /// </summary>
         private static GameObject BuildPreviewModel(Blueprint bp, Dictionary<string, BrickRecord> recByDef, BrickVisual[] visuals, Transform siteRoot)
         {
-            var shelf = new GameObject("Vorlagen");
+            var shelf = new GameObject("Templates");
             shelf.SetActive(false);
             shelf.transform.SetParent(siteRoot, false);
             var items = bp.bricks.Select(b => (b.def, b.p, b.yaw)).Concat((bp.decor ?? new DecorSpec[0]).Select(d => (d.def, d.p, d.yaw)));
             GameObject model = CombinedBricks(bp.siteId + "_PreviewModel", items, recByDef, visuals, shelf.transform, false);
             if (model == null)
             {
-                Plugin.Log.LogWarning("Vorschaumodell: keine lesbaren Steinnetze, Tafel zeigt weiter die Vorlage.");
+                Plugin.Log.LogWarning("Preview model: no readable brick meshes, the board keeps showing the template.");
             }
             return model;
         }
 
         /// <summary>
-        /// Steine (Asset-Name, Mitte lokal, Drehung) zu einem Netz zusammenfuegen, ein Teilnetz je Material.
-        /// Nicht lesbare Netze werden einzeln als Kind angehaengt, wenn erlaubt, sonst ausgelassen.
+        /// Combine bricks (asset name, local center, rotation) into one mesh, one submesh per material.
+        /// Unreadable meshes are attached individually as children if allowed, otherwise skipped.
         /// </summary>
         private static GameObject CombinedBricks(string name, IEnumerable<(string def, float[] p, float yaw)> items,
             Dictionary<string, BrickRecord> recByDef, BrickVisual[] visuals, Transform parent, bool allowChildren)
@@ -477,7 +473,7 @@ namespace ExtraBuildings
             {
                 foreach ((BrickVisual vis, Matrix4x4 m) in loose)
                 {
-                    var child = new GameObject("Stein");
+                    var child = new GameObject("Brick");
                     child.transform.SetParent(go.transform, false);
                     child.transform.localPosition = m.GetColumn(3);
                     child.transform.localRotation = m.rotation;
@@ -488,25 +484,25 @@ namespace ExtraBuildings
             }
             if (loose.Count > 0)
             {
-                Plugin.Log.LogWarning($"{name}: {loose.Count} Steine mit nicht lesbarem Netz {(allowChildren ? "einzeln angehaengt" : "ausgelassen")}.");
+                Plugin.Log.LogWarning($"{name}: {loose.Count} bricks with an unreadable mesh {(allowChildren ? "attached individually" : "skipped")}.");
             }
             return go;
         }
 
         /// <summary>
-        /// Sockel wie bei den Original-Baustellen: Steine nur als Optik (ein Netz), dazu begehbare Kollider.
-        /// Die Steinplaetze des Bauplans stehen bereits auf Sockelhoehe.
+        /// Plinth like the original sites: bricks as visuals only (one mesh), plus walkable colliders.
+        /// The blueprint's slots are already placed at plinth height.
         /// </summary>
         private static void BuildFoundation(Blueprint bp, Transform root, Dictionary<string, BrickRecord> recByDef, BrickVisual[] visuals, int groundLayer)
         {
-            var container = new GameObject("Fundament");
+            var container = new GameObject("Foundation");
             container.transform.SetParent(root, false);
             container.transform.localPosition = Vector3.zero;
             container.transform.localRotation = Quaternion.identity;
-            CombinedBricks("Sockel", (bp.decor ?? new DecorSpec[0]).Select(d => (d.def, d.p, d.yaw)), recByDef, visuals, container.transform, true);
+            CombinedBricks("Plinth", (bp.decor ?? new DecorSpec[0]).Select(d => (d.def, d.p, d.yaw)), recByDef, visuals, container.transform, true);
             foreach (BoxSpec b in bp.colliders ?? new BoxSpec[0])
             {
-                var go = new GameObject("SockelKollider") { layer = groundLayer };
+                var go = new GameObject("PlinthCollider") { layer = groundLayer };
                 go.transform.SetParent(container.transform, false);
                 go.transform.localPosition = new Vector3(b.c[0], b.c[1], b.c[2]);
                 go.transform.localRotation = Quaternion.identity;
@@ -514,13 +510,13 @@ namespace ExtraBuildings
             }
         }
 
-        /// <summary>Hoehe des ersten festen (nicht Trigger-)Kolliders unter dem Punkt.</summary>
+        /// <summary>Height of the topmost solid (non-trigger) collider below the point.</summary>
         private static float GroundY(float x, float z, out string colliderName)
         {
             RaycastHit[] hits = Physics.RaycastAll(new Vector3(x, 200f, z), Vector3.down, 400f, ~0, QueryTriggerInteraction.Ignore);
             if (hits.Length == 0)
             {
-                colliderName = "(kein Boden gefunden)";
+                colliderName = "(no ground found)";
                 return 0f;
             }
             RaycastHit best = hits.OrderByDescending(h => h.point.y).First();

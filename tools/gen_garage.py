@@ -1,23 +1,23 @@
-"""Erzeugt den Bauplan der Test-Garage fuer die ExtraBuildings-Mod.
+"""Generates the blueprint of the test garage for the ExtraBuildings mod.
 
-Raster: 1 Zelle = 0.42 m (Breite eines 4x2x2-Blocks). Grundriss 8 x 12 Zellen (3.36 x 5.04 m),
-6 Wandschichten (2.52 m) + Flachdach. Tor vorne (lokal -z), 6 Zellen breit, 5 Schichten hoch.
-Koordinaten im Bauplan: Meter, lokal zur Grundriss-Mitte auf Bodenhoehe, y = Steinmitte.
+Grid: 1 cell = 0.42 m (width of a 4x2x2 block). Footprint 8 x 12 cells (3.36 x 5.04 m),
+6 wall layers (2.52 m) + flat roof. Door at the front (local -z), 6 cells wide, 5 layers high.
+Blueprint coordinates: meters, relative to the footprint center at ground level, y = brick center.
 
-Aufruf:  py gen_garage.py  ->  ../blueprints/garage.json
+Usage:  py gen_garage.py  ->  ../blueprints/garage.json
 """
 import json
 import os
 
 U = 0.42
 NX, NZ, LAYERS = 8, 12, 6
-BASE_H = 0.42             # Sockelhoehe (wie die Originalgebaeude: unterste Steinmitte 0.63 m)
-STEP = "House_Brick_41DF8BC6"     # 2x1 Block (0.21 x 0.21 x 0.42), lang entlang lokal z
-FLOOR = "Factory_Brick_1687C5FC"  # 2x1 Block (0.42 x 0.21 x 0.21), lang entlang lokal x: Bodenbelag
-DOOR_X = range(1, 7)      # Torzellen in der Frontwand (k = 0)
-DOOR_LAYERS = 5           # Tor offen in den Schichten 0..4
-BLOCK = "Bakery_Brick_2D1CAFD3"   # 4x2x2 Block, lang entlang lokal z
-CUBE = "Factory_Brick_7CB4833B"   # 2x2x2 Block (1 Zelle)
+BASE_H = 0.42             # plinth height (like the original buildings: lowest brick center at 0.63 m)
+STEP = "House_Brick_41DF8BC6"     # 2x1 block (0.21 x 0.21 x 0.42), long along local z
+FLOOR = "Factory_Brick_1687C5FC"  # 2x1 block (0.42 x 0.21 x 0.21), long along local x: floor
+DOOR_X = range(1, 7)      # door cells in the front wall (k = 0)
+DOOR_LAYERS = 5           # door open in layers 0..4
+BLOCK = "Bakery_Brick_2D1CAFD3"   # 4x2x2 block, long along local z
+CUBE = "Factory_Brick_7CB4833B"   # 2x2x2 block (1 cell)
 
 bricks = []  # {def, cells:[(i,k)], layer, yaw, section}
 
@@ -31,7 +31,7 @@ def add(defn, cells, layer, yaw):
 
 
 def run(cells, layer, along_x):
-    """Zellenfolge mit 2er-Bloecken fuellen, Rest mit Wuerfel."""
+    """Fill a row of cells with 2-cell blocks, the remainder with a cube."""
     i = 0
     while i < len(cells):
         if i + 1 < len(cells):
@@ -45,33 +45,33 @@ def run(cells, layer, along_x):
 for L in range(LAYERS):
     door_open = L < DOOR_LAYERS
     even = L % 2 == 0
-    # Laengswaende (x = 0 und x = NX-1): gerade Schichten besitzen die Ecken
+    # Long walls (x = 0 and x = NX-1): even layers own the corners
     kz = range(0, NZ) if even else range(1, NZ - 1)
     for x in (0, NX - 1):
         run([(x, k) for k in kz], L, along_x=False)
-    # Rueckwand (k = NZ-1) und Frontwand (k = 0)
+    # Back wall (k = NZ-1) and front wall (k = 0)
     ix = range(1, NX - 1) if even else range(0, NX)
     run([(i, NZ - 1) for i in ix], L, along_x=True)
     front = [(i, 0) for i in ix]
     if door_open:
         front = [c for c in front if c[0] not in DOOR_X]
-        for c in front:          # Reststuecke neben dem Tor einzeln
+        for c in front:          # remaining pieces next to the door, one by one
             add(CUBE, [c], L, 0)
     else:
         run(front, L, along_x=True)
 
-# Flachdach: eine Schicht Wuerfel ueber alles
+# Flat roof: one layer of cubes over everything
 for i in range(NX):
     for k in range(NZ):
         add(CUBE, [(i, k)], LAYERS, 0)
 
-# Vorbedingungen: alle Steine darunter, die den Grundriss ueberlappen (All);
-# ohne Auflage (Torsturz-Mitte, Dach innen): irgendein Nachbar in derselben Schicht (Any).
+# Prerequisites: all bricks below that overlap the footprint (All);
+# without support (middle of the lintel, inner roof): any neighbor in the same layer (Any).
 cell_owner = {}
 for idx, b in enumerate(bricks):
     for c in b["cells"]:
         key = (b["layer"], c)
-        assert key not in cell_owner, f"Doppelte Zelle {key}"
+        assert key not in cell_owner, f"Duplicate cell {key}"
         cell_owner[key] = idx
 
 for idx, b in enumerate(bricks):
@@ -90,7 +90,8 @@ for idx, b in enumerate(bricks):
             if o is not None and o != idx:
                 neigh.add(o)
     b["mode"], b["req"] = 1, sorted(neigh)
-    assert neigh, f"Stein {idx} ohne Auflage und ohne Nachbarn"
+    assert neigh, f"Brick {idx} has neither support nor neighbors"
+
 
 def lx(i):
     return round((i - (NX - 1) / 2) * U, 4)
@@ -110,11 +111,11 @@ for b in bricks:
         "yaw": b["yaw"], "s": b["s"], "mode": b["mode"], "req": b["req"],
     })
 
-# Sockel (nur Optik + Kollider, keine Steinplaetze): Ring aus 4x2x2-Bloecken eine Zelle um den Grundriss,
-# Holzboden innen, Stufe vor dem Tor.
+# Plinth (visuals + colliders only, no slots): ring of 4x2x2 blocks one cell around the footprint,
+# floor inside, step in front of the door.
 decor = []
-ring_x = [(i, k) for k in (-1, NZ) for i in range(-1, NX + 1)]          # vorne/hinten, inkl. Ecken
-ring_z = [(i, k) for i in (-1, NX) for k in range(0, NZ)]               # links/rechts
+ring_x = [(i, k) for k in (-1, NZ) for i in range(-1, NX + 1)]          # front/back, incl. corners
+ring_z = [(i, k) for i in (-1, NX) for k in range(0, NZ)]               # left/right
 for line, along_x in ((ring_x[:NX + 2], True), (ring_x[NX + 2:], True), (ring_z[:NZ], False), (ring_z[NZ:], False)):
     for j in range(0, len(line) - 1, 2):
         a, c = line[j], line[j + 1]
@@ -122,10 +123,10 @@ for line, along_x in ((ring_x[:NX + 2], True), (ring_x[NX + 2:], True), (ring_z[
     if len(line) % 2:
         a = line[-1]
         decor.append({"def": CUBE, "p": [lx(a[0]), round(BASE_H / 2, 4), lz(a[1])], "yaw": 0})
-for i in DOOR_X:                    # Stufe: je Torzelle zwei 2x1-Bloecke nebeneinander (0.21 breit, 0.42 tief)
+for i in DOOR_X:                    # step: two 2x1 blocks side by side per door cell (0.21 wide, 0.42 deep)
     for half in (-0.25, 0.25):
         decor.append({"def": STEP, "p": [round(lx(i) + half * U, 4), 0.105, lz(-2)], "yaw": 0})
-for i in range(NX):                 # Boden: je Zelle zwei flache 2x1-Bloecke, Oberkante = Sockelhoehe
+for i in range(NX):                 # floor: two flat 2x1 blocks per cell, top = plinth height
     for k in range(NZ):
         for half in (-0.25, 0.25):
             decor.append({"def": FLOOR, "p": [lx(i), round(BASE_H - 0.105, 4), round(lz(k) + half * U, 4)], "yaw": 0})
@@ -143,10 +144,10 @@ blueprint = {
     "siteId": "garage",
     "displayName": "Garage",
     "templateSite": "house",
-    "sections": ["Wände unten", "Wände oben", "Dach"],
-    # Lage der Bauplan-Tafel lokal zur Grundriss-Mitte: x, z, Drehung (Grad)
+    "sections": ["Lower walls", "Upper walls", "Roof"],
+    # Blueprint board relative to the footprint center: x, z, rotation (degrees)
     "blueprintStand": [-(NX / 2) * U - 1.6, -(NZ / 2) * U - 1.2, 0],
-    # Steinvorrat lokal: Startecke x, z, Abstand zwischen Steinen, Steine pro Reihe, Stapelhoehe
+    # Brick supply, local: start corner x, z, gap between bricks, bricks per row, stack height
     "pile": {"x": (NX / 2) * U + 1.5, "z": -(NZ / 2) * U, "gap": 0.06, "perRow": 10, "stack": 2},
     **blueprint_base,
     "bricks": out,
@@ -161,5 +162,5 @@ count = {}
 for b in out:
     count[b["def"]] = count.get(b["def"], 0) + 1
 per_sec = [sum(1 for b in out if b["s"] == s) for s in range(3)]
-print(f"{len(out)} Steine {count}, Abschnitte {per_sec}, Any-Steine {sum(1 for b in out if b['mode'] == 1)}, "
-      f"Sockel {len(decor)} Deko-Steine -> {os.path.normpath(dst)}")
+print(f"{len(out)} bricks {count}, sections {per_sec}, Any bricks {sum(1 for b in out if b['mode'] == 1)}, "
+      f"plinth {len(decor)} decor bricks -> {os.path.normpath(dst)}")
