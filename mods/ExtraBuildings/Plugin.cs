@@ -18,7 +18,7 @@ namespace ExtraBuildings
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Guid = "michel.brickbybrick.extrabuildings";
-        public const string Version = "0.4.1";
+        public const string Version = "0.5.0";
         private const string SteamAppId = "5228920";
 
         internal static ManualLogSource Log;
@@ -27,6 +27,7 @@ namespace ExtraBuildings
         internal static bool ModMapSession;
         internal static ConfigEntry<bool> ModMapActive;
         internal static ConfigEntry<bool> RemoveVanilla;
+        internal static ConfigEntry<bool> Showcase;
         private static Plugin instance;
         private static bool restarting;
         internal static ConfigEntry<string> TargetSlot;
@@ -46,6 +47,9 @@ namespace ExtraBuildings
             PluginDir = Path.GetDirectoryName(Info.Location);
             RemoveVanilla = Config.Bind("General", "RemoveVanillaBuildings", true,
                 "Mod map only: remove the seven original buildings and their bricks, so the town is free for the extra buildings.");
+            Showcase = Config.Bind("General", "Showcase", false,
+                "Mod map only: show the blueprint as a finished building (walkable, with plinth, without scaffold) instead of " +
+                "construction sites, to check a design. The mod world keeps no building progress while this is on.");
             ModMapActive = Config.Bind("General", "ModMapEnabled", false,
                 "true = the game starts as mod map: extra buildings are injected and every world choice opens the mod world. " +
                 "false = mod inactive, the mod world is locked. Takes effect at the next game start.");
@@ -150,7 +154,7 @@ namespace ExtraBuildings
             else if (ModMapSession)
             {
                 var badge = new GUIStyle(GUI.skin.box) { fontSize = 16, alignment = TextAnchor.MiddleCenter };
-                GUI.Box(new Rect(12f, 12f, 150f, 30f), "MOD-MAP", badge);
+                GUI.Box(new Rect(12f, 12f, Showcase.Value ? 230f : 150f, 30f), Showcase.Value ? "MOD-MAP · SHOWCASE" : "MOD-MAP", badge);
             }
             if (toast == null || Time.unscaledTime > toastUntil)
             {

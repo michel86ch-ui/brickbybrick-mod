@@ -124,6 +124,11 @@ namespace ExtraBuildings
                 // The new site goes into the template's installer (initialization, completion, sync, rewards run there)
                 ConstructionSceneInstaller csi = installers.First(c => ((ConstructionSite[])CsiSites.GetValue(c)).Contains(template));
                 var sites = (ConstructionSite[])CsiSites.GetValue(csi);
+                if (Plugin.Showcase.Value)
+                {
+                    BuildShowcase(bp, gsi, scene, allSites, installers, template, bws, catalog, origBricks, visuals, recByDef);
+                    return;
+                }
 
                 // ---- One clone of the template per part, hidden in an inactive holder (no Awake) ----
                 PartSpec[] parts = bp.Parts;
@@ -210,47 +215,7 @@ namespace ExtraBuildings
                 }
 
                 // ---- Material: extended catalog ----
-                var newRecords = new BrickRecord[n];
-                var order = Enumerable.Range(0, n).OrderBy(i => bp.bricks[i].def, StringComparer.Ordinal).ToArray();
-                float rowZ = bp.pile.z;
-                int idx = 0;
-                var cursor = bp.pile.areas != null && bp.pile.areas.Length > 0 ? new AreaCursor(bp.pile.areas, 0.5f) : null;
-                foreach (IGrouping<string, int> group in order.GroupBy(i => bp.bricks[i].def))
-                {
-                    BrickRecord tmplRec = recByDef[group.Key];
-                    Vector3 size = tmplRec.colliderSize;
-                    float cellX = size.x + bp.pile.gap, cellZ = size.z + bp.pile.gap;
-                    int stack = bp.pile.StackFor(size.y);
-                    int j = 0, rows = 0;
-                    cursor?.NewGroup();
-                    Vector2 column = Vector2.zero;
-                    foreach (int i in group)
-                    {
-                        int level = j % stack;
-                        int col = (j / stack) % Math.Max(1, bp.pile.perRow);
-                        int row = (j / stack) / Math.Max(1, bp.pile.perRow);
-                        rows = Math.Max(rows, row + 1);
-                        if (cursor != null && level == 0)
-                        {
-                            column = cursor.Next(cellX, cellZ);
-                        }
-                        Vector3 local = cursor != null ? new Vector3(column.x, 0f, column.y)
-                            : new Vector3(bp.pile.x + col * cellX + cellX / 2f, 0f, rowZ + row * cellZ + cellZ / 2f);
-                        Vector3 world = origin + rot * local;
-                        world.y = GroundY(world.x, world.z, out _) + size.y / 2f + level * size.y + 0.002f;
-                        BrickRecord rec = tmplRec;
-                        rec.id = new ItemInstanceId(IdBase + 1u + (uint)i);
-                        rec.position = world;
-                        rec.rotation = rot;
-                        newRecords[idx++] = rec;
-                        j++;
-                    }
-                    rowZ += rows * cellZ + 0.5f;
-                }
-                if (cursor != null && cursor.Overflow)
-                {
-                    Plugin.Log.LogWarning("Brick supply: the pile areas are full, the rest continues behind the last area.");
-                }
+                BrickRecord[] newRecords = SupplyRecords(bp, recByDef, origin, rot);
                 var newCatalog = ScriptableObject.CreateInstance<BrickWorldCatalog>();
                 newCatalog.name = catalog.name + "+" + bp.siteId;
                 CatBricks.SetValue(newCatalog, clean ? newRecords : origBricks.Concat(newRecords).ToArray());
@@ -653,6 +618,116 @@ namespace ExtraBuildings
                 go.transform.localRotation = Quaternion.identity;
                 go.AddComponent<BoxCollider>().size = new Vector3(b.s[0], b.s[1], b.s[2]);
             }
+        }
+
+        /// <summary>
+        /// Showcase: the blueprint as a finished building, one mesh with a walkable MeshCollider per section, with plinth
+        /// and brick supply, but without construction sites and without the scaffold (a finished building has none).
+        /// For checking a design in the game.
+        /// </summary>
+        private static void BuildShowcase(Blueprint bp, GameSceneInstaller gsi, Scene scene, ConstructionSite[] allSites,
+            ConstructionSceneInstaller[] installers, ConstructionSite template, BrickWorldSource bws, BrickWorldCatalog catalog,
+            BrickRecord[] origBricks, BrickVisual[] visuals, Dictionary<string, BrickRecord> recByDef)
+        {
+            Transform houseGround = template.transform.Find("House/Base_Ground");
+            int groundLayer = houseGround != null ? houseGround.gameObject.layer : 0;
+            bool clean = Plugin.RemoveVanilla.Value;
+            if (clean)
+            {
+                foreach (ConstructionSite s in allSites)
+                {
+                    HideSite(s);
+                }
+            }
+            Quaternion rot = Quaternion.Euler(0f, Plugin.Yaw.Value, 0f);
+            Vector3 origin = new Vector3(Plugin.OriginX.Value, 0f, Plugin.OriginZ.Value);
+            origin.y = GroundY(origin.x, origin.z, out string groundName);
+            var root = new GameObject(bp.displayName + "_Showcase");
+            SceneManager.MoveGameObjectToScene(root, scene);
+            root.transform.SetPositionAndRotation(origin, rot);
+            BuildFoundation(bp, root.transform, recByDef, visuals, groundLayer);
+            int solid = 0;
+            for (int s = 0; s < bp.sections.Length; s++)
+            {
+                int sec = s;
+                GameObject part = CombinedBricks(bp.sections[s], bp.bricks.Where(b => b.s == sec).Select(b => (b.def, b.p, b.Rotation)),
+                    recByDef, visuals, root.transform, true);
+                MeshFilter mf = part != null ? part.GetComponent<MeshFilter>() : null;
+                if (mf != null)
+                {
+                    part.layer = groundLayer;
+                    part.AddComponent<MeshCollider>().sharedMesh = mf.sharedMesh;
+                    solid++;
+                }
+            }
+            var newCatalog = ScriptableObject.CreateInstance<BrickWorldCatalog>();
+            newCatalog.name = catalog.name + "+" + bp.siteId + "_showcase";
+            BrickRecord[] supply = SupplyRecords(bp, recByDef, origin, rot);
+            CatBricks.SetValue(newCatalog, clean ? supply : origBricks.Concat(supply).ToArray());
+            CatVisuals.SetValue(newCatalog, visuals);
+            BwsCatalog.SetValue(bws, newCatalog);
+            if (clean)
+            {
+                // No construction site at all: original slots out of the registry, every installer empty (skipped)
+                var vanillaSlots = new HashSet<PlacementSlot>(allSites.SelectMany(s => s.Sections).SelectMany(sec => sec.Slots)
+                    .Where(cs => cs != null && cs.PlacementSlot != null).Select(cs => cs.PlacementSlot));
+                GsiSlots.SetValue(gsi, ((PlacementSlot[])GsiSlots.GetValue(gsi)).Where(p => !vanillaSlots.Contains(p)).ToArray());
+                foreach (ConstructionSceneInstaller inst in installers)
+                {
+                    CsiSites.SetValue(inst, new ConstructionSite[0]);
+                }
+            }
+            Plugin.Log.LogInfo($"Showcase '{bp.siteId}': {bp.bricks.Length} bricks finished in {bp.sections.Length} meshes ({solid} with colliders) " +
+                $"at ({origin.x:0.00}, {origin.y:0.00}, {origin.z:0.00}), rotation {Plugin.Yaw.Value}, ground '{groundName}'" +
+                (clean ? ", original buildings removed." : "."));
+        }
+
+        /// <summary>The blueprint's bricks as loose supply: grouped by type, stacked in the pile areas (or rows).</summary>
+        private static BrickRecord[] SupplyRecords(Blueprint bp, Dictionary<string, BrickRecord> recByDef, Vector3 origin, Quaternion rot)
+        {
+            int n = bp.bricks.Length;
+            var newRecords = new BrickRecord[n];
+            var order = Enumerable.Range(0, n).OrderBy(i => bp.bricks[i].def, StringComparer.Ordinal).ToArray();
+            float rowZ = bp.pile.z;
+            int idx = 0;
+            var cursor = bp.pile.areas != null && bp.pile.areas.Length > 0 ? new AreaCursor(bp.pile.areas, 0.5f) : null;
+            foreach (IGrouping<string, int> group in order.GroupBy(i => bp.bricks[i].def))
+            {
+                BrickRecord tmplRec = recByDef[group.Key];
+                Vector3 size = tmplRec.colliderSize;
+                float cellX = size.x + bp.pile.gap, cellZ = size.z + bp.pile.gap;
+                int stack = bp.pile.StackFor(size.y);
+                int j = 0, rows = 0;
+                cursor?.NewGroup();
+                Vector2 column = Vector2.zero;
+                foreach (int i in group)
+                {
+                    int level = j % stack;
+                    int col = (j / stack) % Math.Max(1, bp.pile.perRow);
+                    int row = (j / stack) / Math.Max(1, bp.pile.perRow);
+                    rows = Math.Max(rows, row + 1);
+                    if (cursor != null && level == 0)
+                    {
+                        column = cursor.Next(cellX, cellZ);
+                    }
+                    Vector3 local = cursor != null ? new Vector3(column.x, 0f, column.y)
+                        : new Vector3(bp.pile.x + col * cellX + cellX / 2f, 0f, rowZ + row * cellZ + cellZ / 2f);
+                    Vector3 world = origin + rot * local;
+                    world.y = GroundY(world.x, world.z, out _) + size.y / 2f + level * size.y + 0.002f;
+                    BrickRecord rec = tmplRec;
+                    rec.id = new ItemInstanceId(IdBase + 1u + (uint)i);
+                    rec.position = world;
+                    rec.rotation = rot;
+                    newRecords[idx++] = rec;
+                    j++;
+                }
+                rowZ += rows * cellZ + 0.5f;
+            }
+            if (cursor != null && cursor.Overflow)
+            {
+                Plugin.Log.LogWarning("Brick supply: the pile areas are full, the rest continues behind the last area.");
+            }
+            return newRecords;
         }
 
         /// <summary>

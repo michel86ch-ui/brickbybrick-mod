@@ -3,7 +3,7 @@
 A mod for *Brick by Brick: Tidy Up the Small Town!* (Steam). It adds extra buildings to the game from a blueprint –
 with real brick slots, holograms, construction sections, a blueprint board, a completion message and a build replay,
 just like the original buildings. Test buildings so far: a **garage with 191 bricks** and a **round tower with 311 bricks**.
-The goal is a simplified **Notre-Dame with roughly 25,000 bricks**: [3D preview with brick list and construction sections](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/).
+The goal is a simplified **Notre-Dame with roughly 26,000 bricks**: [3D preview with brick list and construction sections](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/).
 
 > Unofficial fan mod, not made by the game's developers. This repository contains no game files.
 
@@ -19,7 +19,13 @@ The goal is a simplified **Notre-Dame with roughly 25,000 bricks**: [3D preview 
 
 First in-game test (2026-10-21): the Notre-Dame loads with 24,291 brick slots in five construction sites, plinth, brick
 supply and the walkable scaffold (0.4.0). The issues seen there (scaffold texture, scaffold parts resting on roofs not
-built yet, stair steps without support, overlapping progress panels) are fixed in 0.4.1, not yet tested in the game. **[Screenshots of the test](https://michel86ch-ui.github.io/brickbybrick-mod/wip/)**
+built yet, stair steps without support, overlapping progress panels) are fixed in 0.4.1. **[Screenshots of the test](https://michel86ch-ui.github.io/brickbybrick-mod/wip/)**
+
+Second test (2026-10-21, showcase mode of 0.5.0: the cathedral shown finished). Drum, spire roof and bell towers as
+intended. Seen: upper walls inside without anything under them, straight joints in inner corners, scaffold parts in
+the air and a flickering walkway. Fixed since: arcades of pointed arches under every upper wall, interlocking inner
+corners, every scaffold part checked for support and for overlapping faces, the bridge between the spire scaffold and
+the bell towers removed, no scaffold in the showcase. Not yet tested in the game.
 
 [![Work in progress: the Notre-Dame building site in the game](docs/wip/notre-dame-wip-1.jpg)](https://michel86ch-ui.github.io/brickbybrick-mod/wip/)
 
@@ -35,7 +41,7 @@ built yet, stair steps without support, overlapping progress panels) are fixed i
 | "Start Mod Map" / "Back to normal worlds" menu button with automatic restart (0.3.0) | confirmed in game |
 | Saving and reloading the mod world | confirmed in game (an older test world reopened with its finished garage) |
 | Round parts: 2x1 blocks along a circle (slightly overlapping), tilted pieces, a cone of roof-tile rings without flickering (0.3.1, round test tower with 311 bricks) | confirmed in game |
-| Notre-Dame: design with about 24,300 bricks, [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/) | work in progress: loads in the game as five construction sites (0.4.0), scaffold fixes in 0.4.1 not yet tested, [screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/wip/) |
+| Notre-Dame: design with about 26,100 bricks, [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/) | work in progress: loads in the game as five construction sites (0.4.0) and finished in showcase mode (0.5.0); arcades, interlocking inner corners and the reworked scaffold not yet tested, [screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/wip/) |
 
 ## Mod map: a separate world instead of the main world
 

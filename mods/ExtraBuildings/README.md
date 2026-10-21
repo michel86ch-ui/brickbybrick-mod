@@ -1,4 +1,4 @@
-# ExtraBuildings 0.4.1
+# ExtraBuildings 0.5.0
 
 Extra construction sites from a blueprint (JSON). Active only in a **mod-map session** (`ModMapEnabled = true`);
 every world choice then opens the mod world (default `singleplayer-4`). In a normal session the mod does nothing and
@@ -31,6 +31,9 @@ locks the mod world. A button top left in the main menu switches the mode and re
     the area collider itself).
 13. Main-menu button: saves `ModMapEnabled`, starts a hidden PowerShell that waits for the game to exit and then
     opens `steam://rungameid/5228920`, and quits the game.
+14. `Showcase = true`: instead of construction sites the blueprint stands finished, one mesh with a walkable
+    `MeshCollider` per section, on its plinth, without scaffold. The original sites are hidden and every installer is
+    left empty, so the world keeps no building progress. For checking a design in the game.
 
 ### Scaffold
 
@@ -45,6 +48,7 @@ boxes (braces) are visuals only.
 |---|---|---|
 | General / ModMapEnabled | false | true = start the game as mod map (takes effect at the next start) |
 | General / RemoveVanillaBuildings | true | Mod map only: remove the seven original buildings and their bricks |
+| General / Showcase | false | Mod map only: the blueprint as a finished building instead of construction sites (no building progress) |
 | General / World | singleplayer-4 | World slot of the mod map |
 | General / Blueprint | garage.json | File in the plugin folder (`garage.json`, `roundtest.json`, `notredame.json`) |
 | Site / X, Z | 0, 0 | Footprint center (town center); the Notre-Dame expects X 3.5, Z 0.4 |
@@ -86,19 +90,29 @@ prerequisites: any piece whose top carries the brick within 4 cm and 0.45 m.
 
 ## Notre-Dame (notredame.json, from `tools\gen_notredame.py 1.2`)
 
-23,590 bricks in 376 sections and five construction sites: west front 4,035, bell towers 4,629, nave 6,428, transept
-and choir 7,197, drum and spire 1,301. Sections are cut like the town's own buildings, about 64 bricks each (the game
+26,092 bricks in 410 sections and five construction sites: west front 4,896, bell towers 4,551, nave 7,332, transept
+and choir 8,012, drum and spire 1,301. Sections are cut like the town's own buildings, about 64 bricks each (the game
 pays one skill point per finished section, ten per finished building, plus milestones for placed bricks), from height
-bands of 0.84 m built from the bottom up, so every section can be finished at its own height. Walls are laid in
-running bond with bonded corners: at every corner, junction and pier the 2x1 block lies across the one below, and a
-1x1 block is only used where a wall has an odd length, at an opening (1,080 of 16,492 wall blocks, 4 of them at
-corners; 99.7 % of the corner layers alternate). Prerequisites: a brick needs a brick of its part that carries it; a brick
-without one (slabs over the hollow towers, lintels over openings, walls rising above the aisles) needs a neighbour in
-the same layer that is itself connected to a carried brick, so layers grow from their supported edge like in the
-original buildings. 76 bricks stay free to place (the lowest clerestory row, whose neighbours belong to other parts).
+bands of 0.84 m built from the bottom up, so every section can be finished at its own height.
+
+No wall stands on nothing: arcades of pointed arches (framed like the windows, two jambs per pier) carry the upper
+walls of nave, choir and transept, a ring of three arches carries the upper wall of the round choir, and arches open
+the bell towers to the aisles and to the hall between them, and that hall to the nave. Only the flat slabs (tower
+platforms, the ceiling of the hall) and the flying buttresses span free. A wall cell is part of the shell when any of
+its 8 neighbours in the layer is outside, so two walls meeting in an inner corner share their corner block.
+
+Walls are laid in running bond with bonded corners: at every corner, junction and pier the 2x1 block lies across the
+one below, and a 1x1 block is only used where a wall has an odd length, at an opening (1,356 of 18,087 wall blocks,
+10 of them at corners; 98.5 % of the corner layers alternate). Prerequisites: a brick needs a brick of its part that
+carries it; a brick without one (slabs, lintels over openings) needs a neighbour in the same layer that is itself
+connected to a carried brick, so layers grow from their supported edge like in the original buildings. No brick is
+free to place.
+
 Plinth 0.42 m with a 0.21 m step all around (the player climbs at most 0.30 m). Supply: three areas west of the
-cathedral, south of the choir and east of the transept stair, stacks up to 2.3 m. Scaffold: 781 boxes, walkways
-1.3 m wide (the player is 1 m wide), all uprights on the plinth.
+cathedral, south of the choir and east of the transept stair, stacks up to 2.3 m. Scaffold: 759 parts, walkways
+1.3 m wide (the player is 1 m wide), all uprights on the plinth. Checked by script: every part touches a path down
+to the ground, no rail or ledger ends more than 0.4 m past its last upright, and no two parts share a face plane
+where they overlap (flickering).
 
 ## Tested in game
 
@@ -113,7 +127,10 @@ cathedral, south of the choir and east of the transept stair, stacks up to 2.3 m
   scaffold. Seen: the scaffold showed the whole texture atlas, uprights stood on roofs not built yet, stair steps had
   nothing under them, and all five progress panels showed at once.
 - 0.4.1: fixes for those four points (atlas UVs, uprights on the plinth, stringers and ledgers, one progress panel).
-  **Not yet tested in game.**
+- 0.5.0 showcase, first build: the Notre-Dame stands finished and walkable; drum, spire roof and towers as intended.
+  Seen: upper walls inside without anything under them, straight joints in inner corners, scaffold parts in the air,
+  a flickering walkway where the bridge to the spire scaffold crossed the tower lanes. Fixed since (arcades, 8-neighbour
+  shell, scaffold rework, that bridge removed, no scaffold in the showcase). **Not yet tested in game.**
 
 ## Open
 

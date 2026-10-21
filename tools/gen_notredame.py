@@ -4,9 +4,10 @@ Grid: 1 cell = 0.21 m in x, y, z (the game's brick unit). Walls are one cell thi
 2x1 blocks. Roof tiles lie flat in rows that step in by one cell per layer (45 degrees, like the game's own roofs,
 chamfered side towards the eave). Doors and windows are framed like the game's house: upright "2x1x2 Blocks" as
 jambs, the same block lying flat as lintel, "2x2 Window" pieces as sill or drip cap; the portals are open passages.
-A drum of curved wedge blocks (the library's round-tower pieces) carries the spire at the crossing. A walkable
-scaffold (visuals + colliders only, no bricks) leads from the ground up a stair tower, over a bridge to a spiral
-around drum and spire, and from the spiral over a bridge to both bell towers.
+A drum of curved wedge blocks (the library's round-tower pieces) carries the spire at the crossing. Arcades of pointed
+arches carry every wall that stands above an aisle or a hall. A walkable scaffold (visuals + colliders only, no bricks)
+leads from the ground up a stair tower and over a bridge to a spiral around drum and spire; stair towers and lanes
+around the bell towers end in a cross bridge between both tower tops.
 
 Axes (game/Unity coordinates): x = width (centered), y = up (0 = top of the plinth), z = length (0 = west facade).
 Yaw convention (Unity): yaw t maps local +x to (cos t, 0, -sin t) and local +z to (sin t, 0, cos t).
@@ -34,7 +35,6 @@ def c2(v):
 # ---- Dimensions (cells at scale 1, about 1:4 of the real building) ----
 TW = c2(18)          # tower width and depth
 FC = c2(14)          # facade center width (= nave width)
-FD = c2(6)           # facade center depth in front of the nave
 HALF_F = TW + FC // 2
 HALF_B = c2(28)      # half body width (nave + double aisles)
 HALF_N = c2(8)       # half nave width (clerestory walls)
@@ -61,11 +61,11 @@ def in_solid(x, y, z):
     ax = abs(px)
     if HALF_F - TW <= ax < HALF_F and 0 <= pz < TW and y < H_T:
         return True
-    if ax < FC / 2 and 0 <= pz < FD + TW and y < H_F:
+    if ax < FC / 2 and 0 <= pz < TW and y < H_F:
         return True
     if ax < HALF_B and Z_NAVE0 <= pz < Z_CH and y < H_A:
         return True
-    if ax < HALF_N and FD <= pz < Z_CH and y < H_N:
+    if ax < HALF_N and Z_NAVE0 <= pz < Z_CH and y < H_N:
         return True
     if ax < HALF_T and Z_TR0 <= pz < Z_TR1 and y < H_N:
         return True
@@ -80,10 +80,12 @@ def in_solid(x, y, z):
 
 def keeps_flat_top(x, z):
     ax, pz = abs(x + 0.5), z + 0.5
-    return (pz < TW and ax < HALF_F) or (ax < FC / 2 and pz < FD + TW)
+    return pz < TW and ax < HALF_F
 
 
 # ---- 1) Shell ----
+# A cell is wall when one of its 8 neighbours in the layer is outside: inner corners, where two walls meet, get their
+# corner cell, so the walls interlock there instead of touching edge to edge.
 X0, X1 = -HALF_T - 6, HALF_T + 6
 Z1 = Z_CH + HALF_B + 4
 vox = {}
@@ -92,10 +94,33 @@ for x in range(X0, X1):
         for y in range(0, H_T):
             if not in_solid(x, y, z):
                 continue
-            side = any(not in_solid(x + dx, y, z + dz) for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+            side = any(not in_solid(x + dx, y, z + dz) for dx in (-1, 0, 1) for dz in (-1, 0, 1) if dx or dz)
             top = not in_solid(x, y + 1, z)
             if side or (top and keeps_flat_top(x, z)):
                 vox[(x, y, z)] = "S"
+
+
+# ---- 1b) Inner walls: nothing hangs in the air ----
+# The shell alone leaves walls standing on nothing: the clerestory walls over the aisles, the transept walls over the
+# aisles, the back walls of the towers over the aisles, the towers' inner walls and the back wall over the hall
+# between the towers. Walls down to the plinth carry them; section 2 opens them into arcades of pointed arches.
+def inner_wall(axis, fixed, u0, u1, y1):
+    """Wall cells u0..u1 from the plinth up to row y1 - 1, along x at z = fixed (axis "x") or along z at x = fixed."""
+    for u in range(u0, u1 + 1):
+        for y in range(y1):
+            vox.setdefault((u, y, fixed) if axis == "x" else (fixed, y, u), "S")
+
+
+X_TW = HALF_F - TW                                     # inner wall of the right tower; the left one is -X_TW - 1
+for xw in (HALF_N - 1, -HALF_N):                       # nave and choir arcades, ending in the crossing piers
+    inner_wall("z", xw, Z_NAVE0, Z_TR0, H_A)
+    inner_wall("z", xw, Z_TR1 - 1, Z_CH - 1, H_A)
+for zw in (Z_TR0, Z_TR1 - 1):                          # transept arcades over the aisles
+    inner_wall("x", zw, HALF_N - 1, HALF_B - 1, H_A)
+    inner_wall("x", zw, -HALF_B, -HALF_N, H_A)
+inner_wall("x", TW - 1, -HALF_F + 1, HALF_F - 2, H_N)  # back of towers and hall, towards aisles and nave
+for xw in (X_TW, -X_TW - 1):                           # towers against the hall between them
+    inner_wall("z", xw, 1, TW - 2, H_F)
 
 
 # Tower platforms: parapet + pierced layer, corner pinnacles; balustrade on the gallery between the towers
@@ -281,6 +306,41 @@ for sx in (-1, 1):
         for x_wall, out in sides:
             frame(Wall("z", x_wall, out), TW // 2 + off - WIN // 2, WIN, TL_Y, TL_H, "window", "West front", fill="D")
 
+
+# Arcades in the inner walls of section 1b: open pointed arches framed like the windows (no sill), between piers of
+# two jambs; the apex stays at least two rows under the wall that rests on the arcade (top).
+def arch(wall, lo, hi, top, part):
+    """Open arch between the jamb columns lo and hi (the opening is the cells between)."""
+    w = hi - lo - 1
+    assert w >= 4 and w % 2 == 0, f"arch {lo}..{hi}: opening of {w} cells"
+    frame(wall, lo + 1, w, 0, (top - 1 - w // 2) // 2 * 2, "window", part, sill=False)
+
+
+def mirror(lo, hi):
+    """The same arch on the left side (x -> -x - 1)."""
+    return -hi - 1, -lo - 1
+
+
+# The frames stick out into the nave and into the aisles beside the transept, which keeps the transept free for the
+# scaffold's uprights (and the jambs of two arcades never meet in one cell at a crossing pier).
+for bc in bays:                                        # one arch per bay, piers under the flying buttresses
+    for x_wall, out in ((-HALF_N, 1), (HALF_N - 1, -1)):
+        arch(Wall("z", x_wall, out), bc - BAY // 2, bc + BAY // 2 - 1, H_A, "Nave" if bc < Z_TR0 else "Choir")
+choir_lo = min(bc for bc in bays if bc > Z_TR1) - BAY // 2
+for x_wall, out in ((-HALF_N, 1), (HALF_N - 1, -1)):  # between the crossing pier and the first choir bay
+    arch(Wall("z", x_wall, out), Z_TR1, choir_lo - 1, H_A, "Choir")
+span = HALF_B - HALF_N                                 # transept arcades: two arches over the aisles; the outer one
+for z_wall, out in ((Z_TR0, -1), (Z_TR1 - 1, 1)):      # stops a pier short of the aisle wall (its frame would cut it)
+    for lo, hi in ((HALF_N, HALF_N + span // 2 - 1), (HALF_N + span // 2, HALF_B - 3)):
+        for a, b in ((lo, hi), mirror(lo, hi)):
+            arch(Wall("x", z_wall, out), a, b, H_A, "Transept")
+BACK = Wall("x", TW - 1, -1)                           # jambs stick out into the towers and the hall
+arch(BACK, -X_TW, X_TW - 1, H_N, "West front")         # hall -> nave
+for a, b in ((HALF_N, HALF_F - 3), mirror(HALF_N, HALF_F - 3)):   # towers -> aisles
+    arch(BACK, a, b, H_A, "West front")
+for x_wall, out in ((X_TW, 1), (-X_TW - 1, -1)):      # hall -> towers
+    arch(Wall("z", x_wall, out), 2, TW - 3, H_F // 2 + 1, "West front")
+
 # ---- 3) Flying buttresses with pinnacles ----
 z = Z_NAVE0 + BAY
 while z < Z_CH - 2:
@@ -323,7 +383,7 @@ def add_tile(x0, y, z0, yaw, part):
 
 def part_of(x, z):
     ax, pz = abs(x + 0.5), z + 0.5
-    if pz < TW + FD and ax < HALF_F:
+    if pz < TW and ax < HALF_F:
         return "West front"
     if Z_TR0 <= pz < Z_TR1:
         return "Transept"
@@ -338,7 +398,7 @@ for k in range(HALF_N - 1):
         add_tile(xx, H_N + k, Z_TR0 + k, -90, "Transept")             # +x -> +z (towards the ridge)
         add_tile(xx, H_N + k, Z_TR1 - 2 - k, 90, "Transept")
 for k in range(HALF_N - 1):
-    for zz in range(FD + TW, Z_CH, 2):
+    for zz in range(TW, Z_CH, 2):
         add_tile(-HALF_N + k, H_N + k, zz, 0, part_of(0, zz))           # left slope, +x towards the ridge
         add_tile(HALF_N - 2 - k, H_N + k, zz, 180, part_of(0, zz))
 # Transept gables: the end walls stop at the eaves, so close the triangle under the roof, row by row between the slopes
@@ -367,9 +427,10 @@ def ring_pose(r, phi):
     return r * math.cos(a), APSE_Z + r * math.sin(a)
 
 
-def ring_wall(r_cells, y0, y1, windows, part):
-    """Half ring wall of 2x1 blocks along the circle (running bond) with windows framed like the straight ones.
-    Positions along the ring are in cells of arc length u (0 at phi = 0); windows = [(phi_c, w, wy0, h)]."""
+def ring_wall(r_cells, y0, y1, windows, part, sills=True):
+    """Half ring wall of 2x1 blocks along the circle (running bond) with windows framed like the straight ones (or
+    arches: sills=False). Positions along the ring are in cells of arc length u (0 at phi = 0); windows = [(phi_c, w,
+    wy0, h)]."""
     r = r_cells * CELL
     U = math.pi * r / CELL
     blocked = {}
@@ -386,9 +447,10 @@ def ring_wall(r_cells, y0, y1, windows, part):
     inwards = lambda phi: 180 - phi     # sloped piece: local -x outwards
     for (phi_c, w, wy0, h) in windows:
         uc = math.radians(phi_c) * r / CELL
-        block(wy0 - 1, uc - w / 2 - 1, uc + w / 2 + 1)
-        for k in range(w // 2 + 1):
-            put("SILL", uc - w / 2 + 2 * k, wy0 - 0.5, SILL_OUT, 0, inwards)
+        if sills:
+            block(wy0 - 1, uc - w / 2 - 1, uc + w / 2 + 1)
+            for k in range(w // 2 + 1):
+                put("SILL", uc - w / 2 + 2 * k, wy0 - 0.5, SILL_OUT, 0, inwards)
         for y in range(wy0, wy0 + h):
             block(y, uc - w / 2 - 1, uc + w / 2 + 1)
         for y in range(wy0, wy0 + h, 2):
@@ -442,6 +504,7 @@ def tile_ring(r, y, part):
 
 
 ring_wall(HALF_B - 0.5, 0, H_A, [(11.25 + 22.5 * j, WIN, AISLE_WIN_Y, c2(5)) for j in range(8)], "Choir")
+ring_wall(HALF_N - 0.5, 0, H_A, [(30 + 60 * j, 6, 0, (H_A - 4) // 2 * 2) for j in range(3)], "Choir", sills=False)
 ring_wall(HALF_N - 0.5, H_A, H_N, [(30 + 60 * j, WIN, CLER_WIN_Y, c2(8)) for j in range(3)], "Choir")
 for k in range(AISLE_RISE):
     tile_ring((HALF_B - 1 - 2 * k) * CELL, H_A + k, "Roof · Choir")
@@ -509,8 +572,9 @@ accents.append(("gold1", 0, spire_top, Z_X))
 
 # ---- 6) Scaffold (no bricks: plank boxes + colliders for the mod) ----
 # Stair tower from the ground in front of the north transept -> bridge at ridge height -> square spiral around drum
-# and spire -> at tower height a bridge west to a cross bridge between both bell towers (gaps in their parapets).
-# Walking surfaces are the tops of 6 cm planks; steps rise one cell (0.21 m) per 0.42 m.
+# and spire. The bell towers have their own scaffold (below) with a cross bridge between their tops.
+# Walking surfaces are the tops of 6 cm planks; steps rise one cell (0.21 m) per 0.42 m. No two boxes share a face
+# plane where they overlap (z-fighting): ledgers are 5 cm, rails and stringers 6 to 8 cm, uprights 12 cm.
 scaffold = []   # (cx, cy, cz, sx, sy, sz) meters
 W, PLANK, RAIL, POST = 1.3, 0.06, 1.0, 0.12   # walkways wider than the player (capsule radius 0.5 m, step offset 0.30 m)
 STEP_RISE, STEP_RUN = CELL, 2 * CELL
@@ -520,20 +584,24 @@ def plank(x0, x1, z0, z1, walk):
     scaffold.append(((x0 + x1) / 2, walk - PLANK / 2, (z0 + z1) / 2, abs(x1 - x0), PLANK, abs(z1 - z0)))
 
 
-def rail(x0, x1, z0, z1, y):
-    scaffold.append(((x0 + x1) / 2, y, (z0 + z1) / 2, max(abs(x1 - x0), 0.06), 0.06, max(abs(z1 - z0), 0.06)))
+def rail(x0, x1, z0, z1, y, t=0.06):
+    scaffold.append(((x0 + x1) / 2, y, (z0 + z1) / 2, max(abs(x1 - x0), t), t, max(abs(z1 - z0), t)))
 
 
-def deck(x0, x1, z0, z1, walk):
-    """Plank on two ledgers along its long edges (the ledgers run from upright to upright)."""
+def deck(x0, x1, z0, z1, walk, ledgers=None):
+    """Plank on two ledgers along its long edges (the ledgers run from upright to upright, or over ledgers = (a, b)
+    along the long axis). The 5 cm ledgers sit 5 mm inside the plank edge, so their faces lie neither in the plank's
+    edge nor in an upright's face."""
     plank(x0, x1, z0, z1, walk)
-    y = walk - PLANK - 0.03
+    y = walk - PLANK - 0.025
     if abs(x1 - x0) >= abs(z1 - z0):
+        a, b = ledgers or (x0, x1)
         for zz in (min(z0, z1) + 0.03, max(z0, z1) - 0.03):
-            rail(x0, x1, zz, zz, y)
+            rail(a, b, zz, zz, y, 0.05)
     else:
+        a, b = ledgers or (z0, z1)
         for xx in (min(x0, x1) + 0.03, max(x0, x1) - 0.03):
-            rail(xx, xx, z0, z1, y)
+            rail(xx, xx, a, b, y, 0.05)
 
 
 def spiral(cx, cz, mid, corners, phase, y0, n):
@@ -549,10 +617,10 @@ def spiral(cx, cz, mid, corners, phase, y0, n):
         px_m = cx + (ax0 + (ax1 - ax0) * f) * mid
         pz_m = cz + (az0 + (az1 - az0) * f) * mid
         walk = y0 + i * STEP_RISE
-        if ax0 != ax1:
-            plank(px_m - STEP_RUN / 2 - 0.01, px_m + STEP_RUN / 2 + 0.01, pz_m - W / 2, pz_m + W / 2, walk)
+        if ax0 != ax1:          # 45 cm: the step ends miss the faces of the uprights at the corners
+            plank(px_m - STEP_RUN / 2 - 0.015, px_m + STEP_RUN / 2 + 0.015, pz_m - W / 2, pz_m + W / 2, walk)
         else:
-            plank(px_m - W / 2, px_m + W / 2, pz_m - STEP_RUN / 2 - 0.01, pz_m + STEP_RUN / 2 + 0.01, walk)
+            plank(px_m - W / 2, px_m + W / 2, pz_m - STEP_RUN / 2 - 0.015, pz_m + STEP_RUN / 2 + 0.015, walk)
         out.append((px_m, pz_m, walk, s_idx))
     flights.append((out, ax_of(corners)))
     return out
@@ -602,8 +670,8 @@ for s_idx in range(4):
         plank(xm - W / 2, xm + W / 2, zm - MID + W / 2, zm + MID - W / 2, y_top)
 rail(cxm - B_OUT, cxm + B_OUT, czm - B_OUT, czm - B_OUT, y_top + RAIL)
 rail(cxm - B_OUT, cxm + B_OUT, czm + B_OUT, czm + B_OUT, y_top + RAIL)
-rail(cxm - B_OUT, cxm - B_OUT, czm - B_OUT, czm + B_OUT, y_top + RAIL)
-rail(cxm + B_OUT, cxm + B_OUT, czm - B_OUT, czm + B_OUT, y_top + RAIL)
+rail(cxm - B_OUT, cxm - B_OUT, czm - B_OUT + 0.03, czm + B_OUT - 0.03, y_top + RAIL)    # butting, not crossing
+rail(cxm + B_OUT, cxm + B_OUT, czm - B_OUT + 0.03, czm + B_OUT - 0.03, y_top + RAIL)
 
 # Stair tower from the ground; its last flight runs towards +x on the line of the drum ring's west side
 MID_T = 1.2
@@ -617,20 +685,16 @@ spiral(cx_t, cz_t, MID_T, T_CORNERS, phase_t, STEP_RISE, n_t)
 
 # Bridge 1 (ridge height): stair tower -> first spiral step
 z_b1 = czm - MID
-deck(cx_t + MID_T, steps[0][0] - STEP_RUN / 2 - 0.01, z_b1 - W / 2, z_b1 + W / 2, y_base)
+deck(cx_t + MID_T, steps[0][0] - STEP_RUN / 2 - 0.015, z_b1 - W / 2, z_b1 + W / 2, y_base,
+     ledgers=(cx_t + MID_T + W / 2, steps[0][0] + STEP_RUN / 2))     # from the stair tower's corner, under the first step
 for zz in (z_b1 - W / 2, z_b1 + W / 2):
     rail(cx_t + MID_T + W / 2, cxm - B_OUT, zz, zz, y_base + RAIL)
-# Bridge 2 (tower height): spiral -> cross bridge; bridge 3 between the bell towers
+# Cross bridge between the bell towers (tower height)
 z_cross = TW * CELL / 2
 x_tw = (HALF_F - TW) * CELL                                # inner faces of the towers
-deck(cxm - W / 2, cxm + W / 2, z_cross + W / 2, czm - B_OUT, DECK)
 deck(-x_tw, x_tw, z_cross - W / 2, z_cross + W / 2, DECK)
-for xx in (cxm - W / 2, cxm + W / 2):                      # open where the back lanes cross at DECK
-    rail(xx, xx, z_cross + W / 2, TW * CELL + 0.35, DECK + RAIL)
-    rail(xx, xx, TW * CELL + 0.35 + W, czm - B_OUT, DECK + RAIL)
-rail(-x_tw, x_tw, z_cross - W / 2, z_cross - W / 2, DECK + RAIL)
-rail(-x_tw, cxm - W / 2, z_cross + W / 2, z_cross + W / 2, DECK + RAIL)
-rail(cxm + W / 2, x_tw, z_cross + W / 2, z_cross + W / 2, DECK + RAIL)
+for zz in (z_cross - W / 2, z_cross + W / 2):
+    rail(-x_tw, x_tw, zz, zz, DECK + RAIL)
 for zc in range(int(math.floor((z_cross - W / 2) / CELL)), int(math.ceil((z_cross + W / 2) / CELL))):
     for xc in (-(HALF_F - TW) - 1, HALF_F - TW):           # parapet gaps where the cross bridge lands
         for y in (H_T, H_T + 1):
@@ -663,7 +727,7 @@ assert back_lv and abs(back_lv[-1] - DECK) < 0.01, "tower stair does not end at 
 print(f"tower scaffold levels: facade {front_lv}, back {back_lv}")
 for h in front_lv:
     deck(-(X_OUT + C_TW), X_OUT + C_TW, front_z - W / 2, front_z + W / 2, h)
-    rail(-(X_OUT + C_TW + W), X_OUT + C_TW + W, front_z - W / 2, front_z - W / 2, h + RAIL)
+    rail(-(X_OUT + C_TW), X_OUT + C_TW, front_z - W / 2, front_z - W / 2, h + RAIL)
     if GALLERY_TOP + 0.15 < h <= DECK - 2.2:                # between the towers, above the gallery
         deck(-(X_IN - C_TW), X_IN - C_TW, front_z + W / 2, TWM + C_TW, h)
 for sx in (1, -1):
@@ -672,8 +736,8 @@ for sx in (1, -1):
         z_from = zs_tw + MID_T + W / 2
         deck(sx * (lane_x - W / 2), sx * (lane_x + W / 2), z_from, back_z + W / 2, h)       # outer lane
         deck(sx * x_min, sx * (lane_x - W / 2), back_z - W / 2, back_z + W / 2, h)        # back lane
-        rail(sx * max(x_min, W / 2 + 0.06), sx * (lane_x + W / 2), back_z + W / 2, back_z + W / 2, h + RAIL)
-        rail(sx * (lane_x + W / 2), sx * (lane_x + W / 2), z_from, back_z + W / 2, h + RAIL)
+        rail(sx * x_min, sx * (lane_x + W / 2), back_z + W / 2, back_z + W / 2, h + RAIL)
+        rail(sx * (lane_x + W / 2), sx * (lane_x + W / 2), z_from, back_z + W / 2 - 0.03, h + RAIL)
     plank(sx * X_OUT, sx * (X_OUT + C_TW), TWM / 2 - W / 2, TWM / 2 + W / 2, DECK)          # onto the platform
     xc = HALF_F - 1 if sx > 0 else -HALF_F
     for zc in range(int(math.floor((TWM / 2 - W / 2) / CELL)), int(math.ceil((TWM / 2 + W / 2) / CELL))):
@@ -704,30 +768,48 @@ def post_cells(x, z):
     return {(int(math.floor((x + dx) / CELL)), int(math.floor((z + dz) / CELL))) for dx in (-POST / 2, POST / 2) for dz in (-POST / 2, POST / 2)}
 
 
+uprights = {}       # (x, z) in mm -> index in scaffold
+
+
+def upright(x, z, y0, y1):
+    """Two uprights on the same spot become one (the faces of two would flicker)."""
+    key = (round(x * 1000), round(z * 1000))
+    if key in uprights:
+        _, cy, _, _, sy, _ = scaffold[uprights[key]]
+        y0, y1 = min(y0, cy - sy / 2), max(y1, cy + sy / 2)
+    else:
+        uprights[key] = len(scaffold)
+        scaffold.append(None)
+    scaffold[uprights[key]] = (x, (y0 + y1) / 2, z, POST, y1 - y0, POST)
+
+
 def post(x, z, top):
     """Upright standing on the plinth up to top, through roofs and slabs; it moves up to 0.3 m sideways to miss walls,
-    and only where that fails it stands on the building. Returns the height of the building surface below top
-    (braces start above it)."""
+    and only where that fails it stands on the building. Returns (surface, x, z): the height of the building surface
+    below top (braces start above it) and where the upright stands."""
     ys = [y for cl in post_cells(x, z) for y in col_ys.get(cl, []) if (y + 1) * CELL <= top]
     surface = (max(ys) + 1) * CELL if ys else 0.0
     for ox, oz in ((0, 0), (0.15, 0), (-0.15, 0), (0, 0.15), (0, -0.15), (0.3, 0), (-0.3, 0), (0, 0.3), (0, -0.3)):
         if all(pierceable((cx, y, cz)) for (cx, cz) in post_cells(x + ox, z + oz) for y in col_ys.get((cx, cz), []) if (y + 1) * CELL <= top):
-            scaffold.append((x + ox, top / 2, z + oz, POST, top, POST))
-            return surface
-    scaffold.append((x, (surface + top) / 2, z, POST, top - surface, POST))
-    return surface
+            upright(x + ox, z + oz, 0.0, top)
+            return surface, x + ox, z + oz
+    upright(x, z, surface, top)
+    return surface, x, z
 
 
 def brace(p0, p1, t=0.06):
-    """Diagonal tube from p0 to p1 (x, y, z) in a vertical plane x = const or z = const. Visuals only (no collider):
-    rotated entries carry Unity Euler angles (pitch, yaw, roll)."""
+    """Diagonal tube from p0 to p1 (x, y, z), usually in a vertical plane x = const or z = const. Visuals only (no
+    collider): rotated entries carry Unity Euler angles (pitch, yaw, roll)."""
     (x0, y0, z0), (x1, y1, z1) = p0, p1
     length = math.dist(p0, p1)
     c = ((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
     if abs(z1 - z0) < 1e-6:
         scaffold.append((*c, t, length, t, 0.0, 0.0, math.degrees(math.atan2(-(x1 - x0), y1 - y0))))
-    else:
+    elif abs(x1 - x0) < 1e-6:
         scaffold.append((*c, t, length, t, math.degrees(math.atan2(z1 - z0, y1 - y0)), 0.0, 0.0))
+    else:   # skewed (an upright moved aside to miss a wall): local y -> (sin p sin yaw, cos p, sin p cos yaw)
+        scaffold.append((*c, t, length, t, math.degrees(math.atan2(math.hypot(x1 - x0, z1 - z0), y1 - y0)),
+                         math.degrees(math.atan2(x1 - x0, z1 - z0)), 0.0))
 
 
 def braces(a, b, y0, y1, band=2.4):
@@ -740,9 +822,9 @@ def braces(a, b, y0, y1, band=2.4):
 
 
 def row_posts(x0, x1, z, top, step=2.4):
-    """Uprights along x at depth z, at most step apart; returns [(x, foot)]."""
+    """Uprights along x at depth z, at most step apart; returns [(foot, x, z)]."""
     n_p = max(1, int(math.ceil(abs(x1 - x0) / step)))
-    return [(x0 + (x1 - x0) * k / n_p, post(x0 + (x1 - x0) * k / n_p, z, top)) for k in range(n_p + 1)]
+    return [post(x0 + (x1 - x0) * k / n_p, z, top) for k in range(n_p + 1)]
 
 
 def tower_frame(cx, cz, mid, top, skip_sides=()):
@@ -750,7 +832,7 @@ def tower_frame(cx, cz, mid, top, skip_sides=()):
     feet = {}
     for (ax, az) in [(-1, -1), (1, -1), (1, 1), (-1, 1)]:
         post(cx + ax * (mid - W / 2), cz + az * (mid - W / 2), top)
-        feet[(ax, az)] = post(cx + ax * (mid + W / 2), cz + az * (mid + W / 2), top)
+        feet[(ax, az)] = post(cx + ax * (mid + W / 2), cz + az * (mid + W / 2), top)[0]
     o = mid + W / 2 + 0.06
     for side, (c0, c1) in {"-z": ((-1, -1), (1, -1)), "+x": ((1, -1), (1, 1)), "+z": ((1, 1), (-1, 1)), "-x": ((-1, 1), (-1, -1))}.items():
         if side in skip_sides:
@@ -760,7 +842,7 @@ def tower_frame(cx, cz, mid, top, skip_sides=()):
 
 
 def bridge_trestle(pts_a, pts_b):
-    """Braces between consecutive uprights along both edges of a bridge: pts = [(x, z, foot)], top shared."""
+    """Braces between consecutive uprights along both edges of a bridge: pts = [(x, z, foot, top)]."""
     for pts in (pts_a, pts_b):
         for (xa, za, fa, ta), (xb, zb, fb, tb) in zip(pts, pts[1:]):
             y0 = max(fa, fb) + 0.3
@@ -768,21 +850,16 @@ def bridge_trestle(pts_a, pts_b):
                 brace((xa, y0, za), (xb, ta - 0.3, zb))
 
 
-tower_frame(cxm, czm, MID, y_top + RAIL, skip_sides=("-z",))       # bridges join the drum ring from the west
+tower_frame(cxm, czm, MID, y_top + RAIL, skip_sides=("-z",))       # bridge 1 runs along the west side of the ring
 tower_frame(cx_t, cz_t, MID_T, y_base + RAIL, skip_sides=("+z",))  # bridge 1 leaves the stair tower to the east
 for (cx_s, _) in tw_stairs:                                        # bell tower stairs: lanes join on the inner side
     tower_frame(cx_s, zs_tw, MID_T, DECK + RAIL, skip_sides=("-x" if cx_s > 0 else "+x",))
 x0_b1, x1_b1 = cx_t + MID_T + W / 2 + 0.3, cxm - B_OUT - 0.3
 edges = []
 for zz in (z_b1 - W / 2, z_b1 + W / 2):
-    edges.append([(x, zz, f, y_base + RAIL - 0.2) for (x, f) in row_posts(x0_b1, x1_b1, zz, y_base + RAIL)])
-bridge_trestle(*edges)
-z0_b2, z1_b2 = z_cross + W / 2 + 0.3, czm - B_OUT - 0.3
-edges = []
-for xx in (cxm - W / 2, cxm + W / 2):
-    n_p = max(1, int(math.ceil((z1_b2 - z0_b2) / 2.4)))
-    edges.append([(xx, z0_b2 + (z1_b2 - z0_b2) * k / n_p, post(xx, z0_b2 + (z1_b2 - z0_b2) * k / n_p, DECK + RAIL), DECK + RAIL - 0.2)
-                  for k in range(n_p + 1)])
+    edges.append([(x, z, f, y_base + RAIL - 0.2) for (f, x, z) in row_posts(x0_b1, x1_b1, zz, y_base + RAIL)])
+    post(cxm - B_OUT, zz, y_base + RAIL)                                  # where the rails end
+    post(steps[0][0] - STEP_RUN / 2 + POST / 2, zz, y_base - PLANK - 0.05)   # under the ledgers at the first step
 bridge_trestle(*edges)
 # Facade scaffold: uprights on both edges of the facade lane, braces in its outer plane between the levels
 fz_out = front_z - W / 2
@@ -790,11 +867,16 @@ top_f = front_lv[-1] + RAIL
 row_out = row_posts(-(X_OUT + C_TW), X_OUT + C_TW, fz_out, top_f)
 row_posts(-(X_OUT + C_TW), X_OUT + C_TW, front_z + W / 2, top_f)
 lv = [0.3] + front_lv + [top_f - 0.3]
-for (xa, _), (xb, _) in zip(row_out, row_out[1:]):
+for (_, xa, za), (_, xb, zb) in zip(row_out, row_out[1:]):
     for k, (ya, yb) in enumerate(zip(lv, lv[1:])):
-        p, q = (xa, xb) if k % 2 == 0 else (xb, xa)
-        brace((p, ya, fz_out - 0.06), (q, yb, fz_out - 0.06))
-# Stair flights: a stringer under both edges of every flight, from corner to corner
+        p, q = ((xa, za), (xb, zb)) if k % 2 == 0 else ((xb, zb), (xa, za))
+        brace((p[0], ya, p[1] - 0.06), (q[0], yb, q[1] - 0.06))
+# Stair flights: a block under a first step near the ground, a stringer under both edges of every flight
+for st_steps, along_x in flights:
+    x_f, z_f, w_f, side_f = st_steps[0]
+    if w_f - PLANK < 0.5:
+        lx, lz = (STEP_RUN, W - 0.1) if along_x[side_f] else (W - 0.1, STEP_RUN)
+        scaffold.append((x_f, (w_f - PLANK) / 2, z_f, lx, w_f - PLANK, lz))
 for st_steps, along_x in flights:
     run = [st_steps[0]]
     for stp in st_steps[1:] + [None]:
@@ -816,18 +898,22 @@ if mid_lv:
     for xx in (-(X_IN - C_TW), X_IN - C_TW):
         for zz in (front_z + W / 2, TWM + C_TW):
             post(xx, zz, mid_lv[-1] + 0.1)
-for xx in (-(x_tw - 0.15), x_tw - 0.15):
+for xx in (-(x_tw - 0.15), x_tw - 0.15):                  # cross bridge, up to its rails
     for zz in (z_cross - W / 2, z_cross + W / 2):
-        post(xx, zz, DECK - PLANK)
-# Back lanes: uprights on both edges, through the aisle roof down to the plinth
+        post(xx, zz, DECK + RAIL)
+# Back lanes: uprights on both edges, through the aisle roof down to the plinth: where the low lanes start, at the
+# corner with the outer lane and at its outer edge
+x_low = (HALF_N + 1) * CELL
+xs_back = [W / 2 + 0.35, x_low + 0.1, (x_low + 0.1 + lane_x - W / 2) / 2, lane_x - W / 2, lane_x + W / 2]
 for sx in (1, -1):
-    row_posts(sx * (W / 2 + 0.35), sx * (lane_x + W / 2), back_z - W / 2, back_lv[-1] + 0.1)
+    for xx in xs_back:
+        post(sx * xx, back_z - W / 2, back_lv[-1] + 0.1)
     bz_out = back_z + W / 2
-    row = row_posts(sx * (W / 2 + 0.35), sx * (lane_x + W / 2), bz_out, back_lv[-1] + RAIL)   # clear of bridge 2
+    row = [post(sx * xx, bz_out, back_lv[-1] + RAIL) for xx in xs_back]
     post(sx * (lane_x + W / 2), zs_tw + MID_T + W / 2, back_lv[-1] + RAIL)
-    for (xa, fa), (xb, fb) in zip(row, row[1:]):
+    for (fa, xa, za), (fb, xb, zb) in zip(row, row[1:]):
         y0 = max(fa, fb) + 0.3
-        braces((xa, bz_out + 0.06), (xb, bz_out + 0.06), y0, back_lv[-1])
+        braces((xa, za + 0.06), (xb, zb + 0.06), y0, back_lv[-1])
 
 # ---- 7) Brick packing: 2x1 blocks in running bond with bonded corners ----
 # Wanted pattern first: at a corner, a junction or inside a solid block (piers, pinnacles) the 2x1 block lies across
