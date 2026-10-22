@@ -717,7 +717,7 @@ for sx in (1, -1):
     cx_s = sx * (X_OUT + C_TW + MID_T + W / 2)
     ph = (SIDE_T - STEP_RUN / 2 - (H_T - 1) * STEP_RUN) % (4 * SIDE_T)   # last step: end of the inner side, at DECK
     st = spiral(cx_s, zs_tw, MID_T, corners, ph, STEP_RISE, H_T)
-    tw_stairs.append((cx_s, corners))
+    tw_stairs.append((cx_s, corners, st))
     alongs = [(ph + i * STEP_RUN) % (4 * SIDE_T) for i in range(H_T)]
     front_lv = sorted({round(st[i][2], 3) for i in range(H_T) if min(alongs[i], 4 * SIDE_T - alongs[i]) < STEP_RUN / 2})
     back_lv = sorted({round(st[i][2], 3) for i in range(H_T) if abs(alongs[i] - SIDE_T) < STEP_RUN / 2 + 0.01})
@@ -743,6 +743,39 @@ for sx in (1, -1):
     for zc in range(int(math.floor((TWM / 2 - W / 2) / CELL)), int(math.ceil((TWM / 2 + W / 2) / CELL))):
         for y in (H_T, H_T + 1):
             vox.pop((xc, y, zc), None)
+
+
+def landing(steps_, along_x, kx, kz, h):
+    """Where a lane leaves a stair ring at level h, the step there covers only part of the corner square (center kx,
+    kz): boards fill the rest of the square at that level, around the footprints of the steps just below, at and just
+    above it, so there is no gap to fall through between the stair and the lane."""
+    half = STEP_RUN / 2 + 0.015
+    feet = []
+    for (px, pz, walk, side) in steps_:
+        if abs(walk - h) <= STEP_RISE + 0.01:
+            feet.append((px - half, px + half, pz - W / 2, pz + W / 2) if along_x[side] else (px - W / 2, px + W / 2, pz - half, pz + half))
+    x0, x1, z0, z1 = kx - W / 2, kx + W / 2, kz - W / 2, kz + W / 2
+    xs = sorted({x0, x1} | {min(max(v, x0), x1) for f in feet for v in f[:2]})
+    zs = sorted({z0, z1} | {min(max(v, z0), z1) for f in feet for v in f[2:]})
+    for xa, xb in zip(xs, xs[1:]):
+        if xb - xa < 0.02:
+            continue
+        run = None
+        for za, zb in list(zip(zs, zs[1:])) + [(None, None)]:
+            free = za is not None and zb - za >= 0.005 and not any(
+                f[0] < (xa + xb) / 2 < f[1] and f[2] < (za + zb) / 2 < f[3] for f in feet)
+            if free:
+                run = (run[0] if run else za, zb)
+                continue
+            if run and run[1] - run[0] >= 0.02:
+                plank(xa, xb, run[0], run[1], h)
+            run = None
+
+
+for (cx_s, corners, st) in tw_stairs:                      # facade lane at corner 0, outer lane at corner 1
+    for h_list, k in ((front_lv, 0), (back_lv, 1)):
+        for h in h_list:
+            landing(st, ax_of(corners), cx_s + corners[k][0] * MID_T, zs_tw + corners[k][1] * MID_T, h)
 
 # Posts down to whatever is below (roof, wall top or ground)
 col_ys = {}
@@ -852,7 +885,7 @@ def bridge_trestle(pts_a, pts_b):
 
 tower_frame(cxm, czm, MID, y_top + RAIL, skip_sides=("-z",))       # bridge 1 runs along the west side of the ring
 tower_frame(cx_t, cz_t, MID_T, y_base + RAIL, skip_sides=("+z",))  # bridge 1 leaves the stair tower to the east
-for (cx_s, _) in tw_stairs:                                        # bell tower stairs: lanes join on the inner side
+for (cx_s, _, _) in tw_stairs:                                     # bell tower stairs: lanes join on the inner side
     tower_frame(cx_s, zs_tw, MID_T, DECK + RAIL, skip_sides=("-x" if cx_s > 0 else "+x",))
 x0_b1, x1_b1 = cx_t + MID_T + W / 2 + 0.3, cxm - B_OUT - 0.3
 edges = []

@@ -730,9 +730,13 @@ namespace ExtraBuildings
             return newRecords;
         }
 
+        /// <summary>Colour of uprights, rails and braces: plain aluminium instead of the game's red scaffold paint.</summary>
+        private static readonly Color Aluminium = new Color(0.76f, 0.78f, 0.80f);
+
         /// <summary>
-        /// Scaffold of the blueprint: all parts as one mesh with the game's scaffolding material, plus a walkable
-        /// BoxCollider per upright part (rotated parts such as braces are visuals only).
+        /// Scaffold of the blueprint: planks as one mesh with the game's scaffolding material, uprights, rails and braces
+        /// as a second mesh in aluminium, plus a walkable BoxCollider per upright part (rotated parts such as braces are
+        /// visuals only).
         /// </summary>
         private static void BuildScaffold(Blueprint bp, Transform root, int groundLayer)
         {
@@ -745,12 +749,14 @@ namespace ExtraBuildings
             Mesh cube = primitive.GetComponent<MeshFilter>().sharedMesh;
             Object.DestroyImmediate(primitive);
             // M_Scaffolding is a texture atlas of the game's scaffold lift (measured): planks use a plain part of a deck
-            // plate, uprights, rails and braces a red pole stripe. Without that the boxes show the whole atlas.
+            // plate, uprights, rails and braces a pole stripe (red there; its colour map is swapped for plain aluminium,
+            // the stripe keeps its normal map). Without that the boxes show the whole atlas.
             Mesh plankMesh = AtlasCube(cube, new Rect(0.35f, 0.335f, 0.12f, 0.09f));
             Mesh poleMesh = AtlasCube(cube, new Rect(0.555f, 0.10f, 0.055f, 0.75f));
             var container = new GameObject("Scaffold");
             container.transform.SetParent(root, false);
-            var parts = new List<CombineInstance>(bp.scaffold.Length);
+            var planks = new List<CombineInstance>(bp.scaffold.Length);
+            var poles = new List<CombineInstance>(bp.scaffold.Length);
             int solid = 0;
             foreach (float[] b in bp.scaffold)
             {
@@ -758,7 +764,7 @@ namespace ExtraBuildings
                 var s = new Vector3(b[3], b[4], b[5]);
                 Quaternion r = b.Length >= 9 ? Quaternion.Euler(b[6], b[7], b[8]) : Quaternion.identity;
                 bool slim = b.Length >= 9 || Mathf.Min(s.x, s.z) < 0.15f;
-                parts.Add(new CombineInstance { mesh = slim ? poleMesh : plankMesh, transform = Matrix4x4.TRS(c, r, s) });
+                (slim ? poles : planks).Add(new CombineInstance { mesh = slim ? poleMesh : plankMesh, transform = Matrix4x4.TRS(c, r, s) });
                 if (b.Length < 9)
                 {
                     var go = new GameObject("ScaffoldCollider") { layer = groundLayer };
@@ -768,19 +774,48 @@ namespace ExtraBuildings
                     solid++;
                 }
             }
-            var mesh = new Mesh { name = "Scaffold", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
-            mesh.CombineMeshes(parts.ToArray(), true, true);
-            mesh.RecalculateBounds();
-            var visual = new GameObject("ScaffoldVisual");
-            visual.transform.SetParent(container.transform, false);
-            visual.AddComponent<MeshFilter>().sharedMesh = mesh;
-            MeshRenderer renderer = visual.AddComponent<MeshRenderer>();
+            Material metal = null;
             if (mat != null)
             {
-                renderer.sharedMaterial = mat;
+                metal = new Material(mat) { name = mat.name + "_Aluminium" };
+                foreach (string map in new[] { "_BaseMap", "_MainTex" })
+                {
+                    if (metal.HasProperty(map))
+                    {
+                        metal.SetTexture(map, Texture2D.whiteTexture);
+                    }
+                }
+                foreach (string tint in new[] { "_BaseColor", "_Color" })
+                {
+                    if (metal.HasProperty(tint))
+                    {
+                        metal.SetColor(tint, Aluminium);
+                    }
+                }
             }
+            ScaffoldMesh(container.transform, "ScaffoldPlanks", planks, mat);
+            ScaffoldMesh(container.transform, "ScaffoldMetal", poles, metal);
             string matName = mat != null ? mat.name : "(none)";
-            Plugin.Log.LogInfo($"Scaffold: {bp.scaffold.Length} parts, {solid} colliders, material {matName}.");
+            Plugin.Log.LogInfo($"Scaffold: {bp.scaffold.Length} parts ({planks.Count} planks, {poles.Count} aluminium), {solid} colliders, material {matName}.");
+        }
+
+        private static void ScaffoldMesh(Transform parent, string name, List<CombineInstance> parts, Material material)
+        {
+            if (parts.Count == 0)
+            {
+                return;
+            }
+            var mesh = new Mesh { name = name, indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+            mesh.CombineMeshes(parts.ToArray(), true, true);
+            mesh.RecalculateBounds();
+            var visual = new GameObject(name);
+            visual.transform.SetParent(parent, false);
+            visual.AddComponent<MeshFilter>().sharedMesh = mesh;
+            MeshRenderer renderer = visual.AddComponent<MeshRenderer>();
+            if (material != null)
+            {
+                renderer.sharedMaterial = material;
+            }
         }
 
         /// <summary>Copy of a mesh with all UVs squeezed into one rectangle of the texture.</summary>
