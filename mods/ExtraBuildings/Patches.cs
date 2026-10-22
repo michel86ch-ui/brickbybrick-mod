@@ -160,46 +160,77 @@ namespace ExtraBuildings
         }
     }
 
-    /// <summary>Remembers the game's progression service for <see cref="StartPoints"/>.</summary>
+    /// <summary>Remembers the game's progression service for <see cref="ModWorldProgression"/>.</summary>
     [HarmonyPatch(typeof(ProgressionService), MethodType.Constructor, typeof(ProgressionDefinitionCatalog), typeof(IProgressionAuthority))]
     internal static class ProgressionServicePatch
     {
         private static void Postfix(ProgressionService __instance)
         {
-            StartPoints.Service = __instance;
+            ModWorldProgression.Service = __instance;
         }
     }
 
     /// <summary>
-    /// A new mod world starts with the configured skill points. New = its shared progression was never changed (revision 0:
-    /// no brick placed, no point earned or spent; the revision is saved with the world). The grant itself raises the
-    /// revision, so it happens once per world. It uses the game's own currency grant, which only the host may call; until
-    /// the host runs (main menu, loading) it is retried once a second.
+    /// Progression of the mod world, through the game's own commands. Only the host may call them; until it runs (main
+    /// menu, loading) they are retried once a second.
+    /// - Start skill points: a new mod world (its shared progression never changed: revision 0, which is saved with the
+    ///   world) gets StartSkillPoints. The grant raises the revision, so it happens once per world.
+    /// - Mobile scaffold: the game grants it only for the finished town house (completion reward "construction-building"
+    ///   at occurrence "house", measured in the skill tree data), and the mod map has no house. While the scaffold skill
+    ///   is still 0 the mod claims that reward, with the house's 10 skill points; the game never grants a claim twice.
     /// </summary>
-    internal static class StartPoints
+    internal static class ModWorldProgression
     {
         internal static ProgressionService Service;
+        private const string ScaffoldSkill = "skill.mobile-scaffold";
         private static float nextTry;
 
         internal static void Tick()
         {
+            if (!Plugin.ModMapSession || Service == null || Time.unscaledTime < nextTry)
+            {
+                return;
+            }
             int amount = Plugin.StartSkillPoints.Value;
-            if (!Plugin.ModMapSession || amount <= 0 || Service == null || Service.Revision != 0 || Time.unscaledTime < nextTry)
+            bool points = amount > 0 && Service.Revision == 0;
+            bool lift = Plugin.UnlockScaffoldLift.Value && Service.GetSkillLevel(ScaffoldSkill) == 0;
+            if (!points && !lift)
             {
                 return;
             }
             nextTry = Time.unscaledTime + 1f;
-            ProgressionCommandResult result = Service.GrantCurrencyForDevelopment("skill-point", amount);
+            var done = new List<string>();
+            if (points)
+            {
+                if (!Applied(Service.GrantCurrencyForDevelopment("skill-point", amount), "start skill points"))
+                {
+                    return;
+                }
+                done.Add($"{amount} skill points to start with");
+            }
+            if (lift && Applied(Service.TryClaimCompletionReward("construction-building", "house"), "mobile scaffold"))
+            {
+                done.Add("mobile scaffold unlocked");
+            }
+            if (done.Count > 0)
+            {
+                Plugin.Log.LogInfo("Mod world: " + string.Join(", ", done) + ".");
+                Plugin.Toast("Mod world: " + string.Join(", ", done) + ".");
+            }
+        }
+
+        private static bool Applied(ProgressionCommandResult result, string what)
+        {
             if (result.Succeeded)
             {
-                Plugin.Log.LogInfo($"New mod world: {amount} start skill points granted.");
-                Plugin.Toast($"New mod world: {amount} skill points to start with.");
+                return true;
             }
-            else if (result.Status != ProgressionCommandStatus.NotAuthoritative)
+            if (result.Status != ProgressionCommandStatus.NotAuthoritative)
             {
-                Plugin.Log.LogWarning($"Start skill points not granted: {result.Status} {result.Message}");
+                Plugin.Log.LogWarning($"Mod world: {what} not granted: {result.Status} {result.Message}");
                 Service = null;
             }
+            return false;
         }
     }
 }

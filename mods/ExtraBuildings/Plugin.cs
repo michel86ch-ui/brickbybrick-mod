@@ -29,6 +29,7 @@ namespace ExtraBuildings
         internal static ConfigEntry<bool> RemoveVanilla;
         internal static ConfigEntry<bool> Showcase;
         internal static ConfigEntry<int> StartSkillPoints;
+        internal static ConfigEntry<bool> UnlockScaffoldLift;
         private static Plugin instance;
         private static bool restarting;
         internal static ConfigEntry<string> TargetSlot;
@@ -57,6 +58,9 @@ namespace ExtraBuildings
             StartSkillPoints = Config.Bind("General", "StartSkillPoints", 20,
                 "Mod map only: skill points a new mod world starts with (0 = none, like the base game). Granted once, while " +
                 "the world has no progress yet; existing worlds keep what they have.");
+            UnlockScaffoldLift = Config.Bind("General", "UnlockScaffoldLift", true,
+                "Mod map only: unlock the mobile scaffold in the mod world (with the 10 skill points of a finished building). " +
+                "The game unlocks it only when the town's house is finished, and the mod map has no house.");
             TargetSlot = Config.Bind("General", "World", "singleplayer-4",
                 "World slot of the mod map (singleplayer-1 to singleplayer-4). Other worlds stay unchanged.");
             ModMapSession = ModMapActive.Value;
@@ -74,7 +78,7 @@ namespace ExtraBuildings
 
         private void Update()
         {
-            StartPoints.Tick();
+            ModWorldProgression.Tick();
             if (!MoveKey.Value.IsDown())
             {
                 return;
