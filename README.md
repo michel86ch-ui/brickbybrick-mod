@@ -2,8 +2,9 @@
 
 A mod for *Brick by Brick: Tidy Up the Small Town!* (Steam). It adds extra buildings to the game from a blueprint –
 with real brick slots, holograms, construction sections, a blueprint board, a completion message and a build replay,
-just like the original buildings. Test buildings so far: a **garage with 191 bricks** and a **round tower with 311 bricks**.
-The goal is a simplified **Notre-Dame with roughly 26,000 bricks**: [3D preview with brick list and construction sections](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/).
+just like the original buildings. The main building is a simplified **Notre-Dame with 26,462 bricks**, with its own
+walkable scaffold: [3D preview with brick list and construction sections](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/).
+Test buildings: a **garage with 191 bricks** and a **round tower with 311 bricks**.
 
 > Unofficial fan mod, not made by the game's developers. This repository contains no game files.
 
@@ -25,7 +26,7 @@ walls. **[More screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/sho
 
 [![Inside the nave: arcades of pointed arches carry the upper walls](docs/showcase/notre-dame-3.jpg)](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/)
 
-## Status (2026-10-21)
+## Status (2026-10-22, version 1.0.0)
 
 | Feature | Status |
 |---|---|
@@ -39,7 +40,9 @@ walls. **[More screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/sho
 | Round parts: 2x1 blocks along a circle (slightly overlapping), tilted pieces, a cone of roof-tile rings without flickering (0.3.1, round test tower with 311 bricks) | confirmed in game |
 | Notre-Dame with about 26,500 bricks, [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/): loads as five construction sites (0.4.0), shown finished in showcase mode (0.5.0) | confirmed in game, [screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/) |
 | Notre-Dame: building it brick by brick: bricks snap in, sections finish, skill points are earned (0.5.0) | confirmed in game |
-| Notre-Dame: improved brick bond, start skill points for a new mod world (0.6.0); a complete build | not yet tested |
+| Notre-Dame: start skill points for a new mod world (0.6.0) | confirmed in game |
+| Notre-Dame: aluminium scaffold with landings at every stair corner, clerestory lanes, mobile scaffold unlocked and driving up ramps onto the plinth (1.0.0) | confirmed in game |
+| Notre-Dame: a complete build | not yet tested |
 
 ## Mod map: a separate world instead of the main world
 
@@ -62,7 +65,7 @@ that already has bricks on it: they would stay behind at the old place. Delete t
 
 ## Installation
 
-1. Download **[BrickByBrick-ExtraBuildings-0.6.0.zip](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest)**
+1. Download **[BrickByBrick-ExtraBuildings-1.0.0.zip](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest)**
    and unzip everything into the game folder, so that `winhttp.dll` sits next to `BrickByBrick.exe`
    (Steam: right-click the game > Manage > Browse local files).
 2. Start the game and click **Start Mod Map** top left in the main menu. The game restarts.
@@ -70,11 +73,12 @@ that already has bricks on it: they would stay behind at the old place. Delete t
    existing world there would be opened as the mod world.
 
 Back to your own worlds: **Back to normal worlds** in the main menu. A new mod world starts with 20 skill points
-(`StartSkillPoints` in `BepInEx\config\michel.brickbybrick.extrabuildings.cfg`, 0 = like the base game). The ZIP
-contains BepInEx 5.4.23.5 (unmodified), the mod with its blueprints and a ready config.
+(`StartSkillPoints` in `BepInEx\config\michel.brickbybrick.extrabuildings.cfg`, 0 = like the base game), and the
+mobile scaffold is unlocked (`UnlockScaffoldLift`): in the base game it comes with the town's house, which the mod
+map does not have. The ZIP contains BepInEx 5.4.23.5 (unmodified), the mod with its blueprints and a ready config.
 
-Updating from 0.5.0: the Notre-Dame blueprint changed, so start a new save in slot 4 (a world built with 0.5.0 does
-not fit it).
+Updating from an earlier version: the Notre-Dame blueprint changed, so start a new save in slot 4 (a world built
+with 0.6.0 or earlier does not fit it).
 
 Uninstall: delete `winhttp.dll`, `doorstop_config.ini`, `.doorstop_version`, `changelog.txt`,
 `ExtraBuildings-README.txt` and the `BepInEx` folder in the game folder. The game itself is not modified.

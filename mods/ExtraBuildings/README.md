@@ -1,4 +1,4 @@
-# ExtraBuildings 0.6.0
+# ExtraBuildings 1.0.0
 
 Extra construction sites from a blueprint (JSON). Active only in a **mod-map session** (`ModMapEnabled = true`);
 every world choice then opens the mod world (default `singleplayer-4`). In a normal session the mod does nothing and
@@ -37,13 +37,17 @@ locks the mod world. A button top left in the main menu switches the mode and re
 15. Start skill points: a mod world whose shared progression was never changed (`ProgressionService.Revision` 0, saved
     with the world) gets `StartSkillPoints` through the game's own `GrantCurrencyForDevelopment` (host only). The
     grant raises the revision, so it happens once per world; existing worlds keep what they have.
+16. Mobile scaffold: in the base game its skill node opens only when the town's house is finished (the only node of
+    58 that a finished building opens), and the mod map has no house. With `UnlockScaffoldLift` the mod claims that
+    completion reward (`construction-building` + `house`, with its 10 skill points) through the game's own
+    `TryClaimCompletionReward` (host only), once per mod world.
 
 ### Scaffold
 
-Boxes from the blueprint, all in one mesh with the game's `M_Scaffolding` material. That material is a texture atlas
-of the scaffold lift, so the boxes map their UVs onto a plain part of it (planks: a deck plate, uprights, rails and
-braces: a red pole stripe). Upright boxes get a walkable `BoxCollider` on the layer of the house foundation; rotated
-boxes (braces) are visuals only.
+Boxes from the blueprint in two meshes: planks with the game's `M_Scaffolding` material (a texture atlas of the
+scaffold lift, so their UVs map onto a deck plate of it), uprights, rails and braces with a copy of it in plain
+aluminium. Walkable boxes get a `BoxCollider` on the layer of the house foundation, rotated ones (ramps) with their
+rotation. Uprights have no collider, so the mobile scaffold can drive through between them; braces are visuals only.
 
 ## Settings (`BepInEx\config\michel.brickbybrick.extrabuildings.cfg`)
 
@@ -52,6 +56,7 @@ boxes (braces) are visuals only.
 | General / ModMapEnabled | false | true = start the game as mod map (takes effect at the next start) |
 | General / RemoveVanillaBuildings | true | Mod map only: remove the seven original buildings and their bricks |
 | General / StartSkillPoints | 20 | Mod map only: skill points a new mod world starts with (0 = like the base game) |
+| General / UnlockScaffoldLift | true | Mod map only: unlock the mobile scaffold (the game unlocks it with the town's house, which the mod map does not have) |
 | General / Showcase | false | Mod map only: the blueprint as a finished building instead of construction sites (no building progress) |
 | General / World | singleplayer-4 | World slot of the mod map |
 | General / Blueprint | garage.json | File in the plugin folder (`garage.json`, `roundtest.json`, `notredame.json`) |
@@ -69,8 +74,8 @@ m, local, y above ground), `yaw`, `pitch` (optional tilt around the brick's x ax
 
 - `parts[] {siteId, displayName, sections[], blueprintStand}`: optional, one construction site per part; every
   section belongs to exactly one part. Without parts the whole blueprint is one site.
-- `scaffold[]`: `[cx, cy, cz, sx, sy, sz]` = walkable box, `[cx, cy, cz, sx, sy, sz, pitch, yaw, roll]` = rotated
-  box, visuals only.
+- `scaffold[]`: `[cx, cy, cz, sx, sy, sz]` = walkable box (a slim upright one gets no collider),
+  `[cx, cy, cz, sx, sy, sz, pitch, yaw, roll]` = rotated box, visuals only; a tenth value 1 makes it walkable (ramps).
 - `pile.areas`: local rectangles `[x0, z0, x1, z1]` filled one after the other; `pile.maxHeight` caps the stacks
   (meters). Without areas the supply grows in rows of `perRow` from `x, z`.
 
@@ -109,17 +114,31 @@ Walls are laid in running bond with bonded corners: at every corner, junction an
 one below. A 1x1 block sits where a wall ends at an opening, in every other course, so the joints shift like half
 bricks at a real reveal (also in piers between two windows), where a wall has an odd length, or where a cell has no
 neighbour; arch jambs stand right against the next wall, so no one-cell stubs are left (2,148 of 18,453 wall blocks,
-1,435 of them at openings, 7 at corners; 99.5 % of the corner layers alternate; 12.5 % of the vertical joints sit
+1,439 of them at openings, 7 at corners; 99.5 % of the corner layers alternate; 9.3 % of the vertical joints sit
 on the joint below). Prerequisites: a brick needs a brick of its part that
 carries it; a brick without one (slabs, lintels over openings) needs a neighbour in the same layer that is itself
 connected to a carried brick, so layers grow from their supported edge like in the original buildings. No brick is
 free to place.
 
-Plinth 0.42 m with a 0.21 m step all around (the player climbs at most 0.30 m). Supply: three areas west of the
-cathedral, south of the choir and east of the transept stair, stacks up to 2.3 m. Scaffold: 759 parts, walkways
-1.3 m wide (the player is 1 m wide), all uprights on the plinth. Checked by script: every part touches a path down
-to the ground, no rail or ledger ends more than 0.4 m past its last upright, and no two parts share a face plane
-where they overlap (flickering).
+Plinth 0.42 m with a 0.21 m step all around (the player climbs at most 0.30 m). Supply: four areas around the
+cathedral, stacks up to 3 m, with a 2.4 m wide way left for the mobile scaffold to the ramps.
+
+Scaffold: 863 parts in aluminium, walkways 1.3 m wide (the player is 1 m wide), 73 uprights, all on the plinth.
+
+- Bell towers: a facade scaffold in front of the west front and a stair tower at each tower's outer face up to its
+  platform, decks every 5 m, a back lane behind each tower and a cross bridge between the tower tops.
+- Transept, drum and spire: a stair tower in front of the north transept, a bridge at ridge height and a stair round
+  the drum up to a platform from which the spire tip is within reach.
+- Clerestory lanes at 9.45 m along the upper walls of nave, transept and choir, reached by short stairs from the
+  bell towers' back lanes. A brick is set from up to 5 m from the player (game code), so from a lane the upper wall
+  and the roofs up to the ridge are within reach.
+- Every stair turns on a square landing, never on its steps.
+- Two 15 degree ramps on the long sides lead the game's mobile scaffold up onto the plinth (it cannot climb the
+  0.21 m step).
+
+Checked by script: every part touches a path down to the ground, no rail or ledger ends more than 0.4 m past its last
+upright, no plank lies without support, and no two visible parts share a face plane where they overlap
+(flickering).
 
 ## Tested in game
 
@@ -142,11 +161,18 @@ where they overlap (flickering).
   and the crossing).
 - 0.5.0 building in normal mode: bricks snap in, sections finish, a skill point is earned. Seen: a column of 1x1
   beside an arch jamb and stacked joints in the piers between the aisle windows.
-- 0.6.0: those two fixed (packing above), start skill points. **Not yet tested in game.**
+- 0.6.0: those two fixed (packing above), start skill points (a new mod world starts with them). Seen: stacked
+  joints where an odd wall between two corners had its 1x1 in the middle, the red scaffold too dominant, a gap in a
+  tower lane, stairs turning on their steps, the mobile scaffold unable to climb the plinth. The skill tree data
+  showed that the mobile scaffold opens only with the town's house, which the mod map does not have.
+- 1.0.0: all of that fixed: the 1x1 goes where the joints shift, aluminium scaffold with landings at every stair
+  corner, mobile scaffold unlocked, up the ramps onto the plinth and through the uprights (no colliders), clerestory
+  lanes, higher brick stacks, 73 instead of 200 uprights.
 
 ## Open
 
-- Building the Notre-Dame: reach from the scaffold, load and frame rate with 24,000 bricks, saving.
+- Building the Notre-Dame to the end: reach from the clerestory lanes to the upper walls and roofs, load and frame
+  rate with 26,000 bricks, saving.
 - Does a finished building grant skill points (`construction-building` + building ID)?
 - The tutorial hints still run in the mod world (e.g. "open the skill tree").
 - Moving a site in a world with placed bricks leaves those bricks behind (they are saved with their world

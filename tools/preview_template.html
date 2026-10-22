@@ -169,9 +169,10 @@ a { color: var(--accent); }
         Nothing hangs in the air: arcades of pointed arches on piers carry the upper walls of nave, transept and choir (a ring of arches in the round choir), and arches open the towers to the aisles and to the hall between them.
         Where two walls meet in an inner corner they share a corner block, so the corners interlock.
         <strong>Scaffold:</strong> the game's scaffold lift goes up to 17.05 m and a brick can be set from up to 5 m away. On top of that the mod adds a walkable scaffold
-        (red like the game's own scaffold, no bricks): a facade scaffold in front of the west front with a stair tower at each bell tower up to its platform, decks every 4.8 m and a cross bridge between the two tower tops,
-        and a stair tower in front of the north transept with a bridge at ridge height to a spiral around drum and spire.
-        All uprights stand on the plinth, stair flights rest on stringers, braces stiffen the frames, and no two parts share a face where they overlap (no flickering).
+        (aluminium tubes and wooden planks, no bricks): a facade scaffold in front of the west front with a stair tower at each bell tower up to its platform, decks every 5 m and a cross bridge between the two tower tops,
+        a stair tower in front of the north transept with a bridge at ridge height to a stair round the drum up to the spire,
+        and lanes at 9.45 m along the upper walls of nave, transept and choir. Every stair turns on a square landing, and two ramps lead the game's mobile scaffold up onto the plinth.
+        All 73 uprights stand on the plinth, stair flights rest on stringers, braces stiffen the frames, and no two parts share a face where they overlap (no flickering).
         <strong>In the game</strong> the cathedral is built as five construction sites (the game allows 8,192 brick slots per site): west front, bell towers, nave,
         transept and choir, drum and spire. It loads in the game, and a showcase mode shows it finished: <a href="../showcase/">screenshots from the game</a>.
       </p>
@@ -354,7 +355,7 @@ a { color: var(--accent); }
 
   // Scaffold (part of the mod, not bricks)
   const scaf = D.scaffold || [];
-  const scafMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xc04a52 }), Math.max(1, scaf.length));
+  const scafMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xc2c7cc }), Math.max(1, scaf.length));
   const deg = Math.PI / 180;
   scaf.forEach((s, i) => {
     dummy.position.set(s[0] / 100 - offX, s[1] / 100, s[2] / 100 - offZ);
