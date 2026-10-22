@@ -766,8 +766,9 @@ namespace ExtraBuildings
                 Quaternion r = rotated ? Quaternion.Euler(b[6], b[7], b[8]) : Quaternion.identity;
                 bool walkable = !rotated || (b.Length >= 10 && b[9] > 0.5f);     // a rotated box is a brace, unless marked (ramps)
                 bool slim = (rotated && !walkable) || Mathf.Min(s.x, s.z) < 0.15f;
+                bool upright = !rotated && slim && s.y > Mathf.Max(s.x, s.z);    // no collider: the mobile scaffold rolls through
                 (slim ? poles : planks).Add(new CombineInstance { mesh = slim ? poleMesh : plankMesh, transform = Matrix4x4.TRS(c, r, s) });
-                if (walkable)
+                if (walkable && !upright)
                 {
                     var go = new GameObject("ScaffoldCollider") { layer = groundLayer };
                     go.transform.SetParent(container.transform, false);

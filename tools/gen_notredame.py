@@ -726,6 +726,8 @@ for zc in range(int(math.floor((z_cross - W / 2) / CELL)), int(math.ceil((z_cros
 # facade lane or at the outer lane, level platforms branch off: the facade lane (between the towers too, once above
 # the gallery) and the back lane behind the tower (once above the aisle roof). One turn = 4.8 m between levels.
 C_TW = 0.45                                                # clearance to the walls (sills stick out 0.39 m)
+L_IN, L_OUT = HALF_N * CELL + C_TW, HALF_N * CELL + C_TW + W   # clerestory lanes (below): band from the axis
+H_ACCESS = 50 * CELL                                       # back lane level their stairs come down from
 X_OUT, X_IN, TWM = HALF_F * CELL, (HALF_F - TW) * CELL, TW * CELL
 front_z, back_z = -C_TW - W / 2, TWM + C_TW + W / 2
 lane_x = X_OUT + C_TW + W / 2                              # outer lane = inner side of the stair tower
@@ -755,7 +757,11 @@ for sx in (1, -1):
         z_from = zs_tw + MID_T + W / 2
         deck(sx * (lane_x - W / 2), sx * (lane_x + W / 2), z_from, back_z + W / 2, h)       # outer lane
         deck(sx * x_min, sx * (lane_x - W / 2), back_z - W / 2, back_z + W / 2, h)        # back lane
-        rail(sx * x_min, sx * (lane_x + W / 2), back_z + W / 2, back_z + W / 2, h + RAIL)
+        if abs(h - H_ACCESS) < 0.01:                          # open where the stair to the clerestory lane leaves
+            rail(sx * x_min, sx * L_IN, back_z + W / 2, back_z + W / 2, h + RAIL)
+            rail(sx * L_OUT, sx * (lane_x + W / 2), back_z + W / 2, back_z + W / 2, h + RAIL)
+        else:
+            rail(sx * x_min, sx * (lane_x + W / 2), back_z + W / 2, back_z + W / 2, h + RAIL)
         rail(sx * (lane_x + W / 2), sx * (lane_x + W / 2), z_from, back_z + W / 2 - 0.03, h + RAIL)
     plank(sx * X_OUT, sx * (X_OUT + C_TW), TWM / 2 - W / 2, TWM / 2 + W / 2, DECK)          # onto the platform
     xc = HALF_F - 1 if sx > 0 else -HALF_F
@@ -791,8 +797,13 @@ uprights = {}       # (x, z) in mm -> index in scaffold
 
 
 def upright(x, z, y0, y1):
-    """Two uprights on the same spot become one (the faces of two would flicker)."""
+    """Two uprights on the same spot, or overlapping each other, become one (the faces of two would flicker)."""
     key = (round(x * 1000), round(z * 1000))
+    if key not in uprights:
+        near = [k for k in uprights if abs(k[0] - key[0]) < POST * 1000 and abs(k[1] - key[1]) < POST * 1000]
+        if near:
+            key = near[0]
+            x, z = key[0] / 1000, key[1] / 1000
     if key in uprights:
         _, cy, _, _, sy, _ = scaffold[uprights[key]]
         y0, y1 = min(y0, cy - sy / 2), max(y1, cy + sy / 2)
@@ -870,8 +881,8 @@ def bridge_trestle(pts_a, pts_b):
                 brace((xa, y0, za), (xb, ta - 0.3, zb))
 
 
-tower_frame(cxm, czm, MID, y_top + RAIL, skip_sides=("-x",))       # no braces where bridges and lanes pass a face
-tower_frame(cx_t, cz_t, MID_T, y_base + RAIL, skip_sides=("+x",))
+tower_frame(cxm, czm, MID, y_top + RAIL, skip_sides=("-x", "-z", "+z"))   # no braces where bridges and lanes pass
+tower_frame(cx_t, cz_t, MID_T, y_base + RAIL, skip_sides=("+x", "+z"))
 for (cx_s, _) in tw_stairs:                                        # facade lane in at corner 0, outer lane out at 1
     tower_frame(cx_s, zs_tw, MID_T, DECK + RAIL, skip_sides=("-x" if cx_s > 0 else "+x", "+z"))
 x0_b1, x1_b1 = cx_t + MID_T + W / 2 + 0.3, cxm - B_OUT - 0.3
@@ -879,7 +890,7 @@ edges = []
 for zz in (z_b1 - W / 2, z_b1 + W / 2):
     edges.append([(x, z, f, y_base + RAIL - 0.2) for (f, x, z) in row_posts(x0_b1, x1_b1, zz, y_base + RAIL)])
     post(cxm - B_OUT, zz, y_base + RAIL)                                  # where the rails end
-bridge_trestle(*edges)
+bridge_trestle([], edges[1])                               # (the south edge stands on the clerestory lane's edge)
 # Facade scaffold: uprights on both edges of the facade lane, braces in its outer plane between the levels
 fz_out = front_z - W / 2
 top_f = front_lv[-1] + RAIL
@@ -890,6 +901,120 @@ for (_, xa, za), (_, xb, zb) in zip(row_out, row_out[1:]):
     for k, (ya, yb) in enumerate(zip(lv, lv[1:])):
         p, q = ((xa, za), (xb, zb)) if k % 2 == 0 else ((xb, zb), (xa, za))
         brace((p[0], ya, p[1] - 0.06), (q[0], yb, q[1] - 0.06))
+# Uprights the decks were still missing: platform between the towers, cross bridge, inner edge of the back lanes
+mid_lv = [h for h in front_lv if GALLERY_TOP + 0.15 < h <= DECK - 2.2]
+if mid_lv:
+    for xx in (-(X_IN - C_TW), X_IN - C_TW):
+        for zz in (front_z + W / 2, TWM + C_TW):
+            post(xx, zz, mid_lv[-1] + 0.1)
+for xx in (-(x_tw - 0.15), x_tw - 0.15):                  # cross bridge, up to its rails
+    for zz in (z_cross - W / 2, z_cross + W / 2):
+        post(xx, zz, DECK + RAIL)
+# Back lanes: uprights on both edges, through the aisle roof down to the plinth: where the low lanes start, at the
+# corner with the outer lane and at its outer edge
+x_low = (HALF_N + 1) * CELL
+xs_back = [W / 2 + 0.35, x_low + 0.1, (x_low + 0.1 + lane_x - W / 2) / 2, lane_x - W / 2, lane_x + W / 2]
+for sx in (1, -1):
+    for xx in xs_back:
+        post(sx * xx, back_z - W / 2, back_lv[-1] + 0.1)
+    bz_out = back_z + W / 2
+    row = [post(sx * xx, bz_out, back_lv[-1] + RAIL) for xx in xs_back]
+    post(sx * (lane_x + W / 2), zs_tw + MID_T + W / 2, back_lv[-1] + RAIL)
+    for xx in (L_IN, L_OUT):                               # where the rail opens for the clerestory stair
+        post(sx * xx, bz_out, H_ACCESS + RAIL)
+    for (fa, xa, za), (fb, xb, zb) in zip(row, row[1:]):
+        if min(abs(xa), abs(xb)) < L_OUT and max(abs(xa), abs(xb)) > L_IN:
+            continue                                       # no braces across the clerestory stair
+        y0 = max(fa, fb) + 0.3
+        braces((xa, za + 0.06), (xb, zb + 0.06), y0, back_lv[-1])
+
+# Ramps for the game's mobile scaffold, which rolls on wheels of 9.8 cm radius over ground up to 45 degrees (measured)
+# and so cannot climb the plinth's 21 cm steps: 15 degrees from the ground up to the plinth, on both long sides just
+# behind the bell tower stairs, where the plinth is widened for it (PLINTH_SIDE). Entries with a tenth value 1 are
+# rotated boxes that are walkable (the mod gives them a collider).
+PLINTH_SIDE = 25 * 0.42                                    # long sides of the plinth (its 0.42 m cell grid)
+RAMP_DEG, RAMP_W, RAMP_T, RAMP_Z = 15.0, 4.0, 0.08, 12.0   # slope, width, board, middle along z
+ramp_run = BASE_H_SCAF / math.tan(math.radians(RAMP_DEG))
+for sx in (1, -1):
+    a = math.radians(RAMP_DEG)
+    mx, my = sx * (PLINTH_SIDE + ramp_run / 2), -BASE_H_SCAF / 2      # middle of the top face (0 = plinth top)
+    scaffold.append((mx - sx * math.sin(a) * RAMP_T / 2, my - math.cos(a) * RAMP_T / 2, RAMP_Z,
+                     ramp_run / math.cos(a), RAMP_T, RAMP_W, 0.0, 0.0, -sx * RAMP_DEG, 1.0))
+
+# Clerestory lanes at LH along the upper walls: both sides of the nave, in front of the transept's west walls, round the
+# transept ends (north: east of its stair tower only), behind its east walls, along the choir and in a U round the
+# apse, where both sides join. They lie above the aisle roofs and the flying buttresses. Placing reaches 5 m from the
+# player's position (game code): from a lane the upper wall down to about 4.5 m and the roofs up to the ridge, from the
+# floor inside the lower part of those one-brick walls. A four-step stair leads down to each side from the bell towers'
+# back lane at H_ACCESS. Uprights stand on the plinth through the aisle roofs (or outside the transept ends).
+LH = 45 * CELL
+zf0, zf1 = czm - B_OUT - W, czm - B_OUT                    # in front of the transept's west walls (to the drum posts)
+ze0, ze1 = czm + B_OUT, czm + B_OUT + W                    # behind its east walls
+XE0, XE1 = HALF_T * CELL + C_TW, HALF_T * CELL + C_TW + W  # outside its end walls
+za0, za1 = APSE_Z + L_IN, APSE_Z + L_OUT                   # east of the apse
+z_north_end = cz_t + MID_T + W / 2 + POST / 2              # north end lane: beyond the transept stair tower
+x_north_face = -(cx_t + MID_T + W / 2) - POST / 2          # north face lane: up to that tower
+PORTAL = (Z_X * CELL - 1.0, Z_X * CELL + 1.0)              # no uprights in front of the transept portals
+assert any(abs(h - H_ACCESS) < 0.01 for h in back_lv), "no back lane for the clerestory stairs"
+n_acc = int(round((H_ACCESS - LH) / STEP_RISE)) - 1        # steps between the back lane and the lane
+t_acc = STEP_RUN + 0.01
+z_acc0 = back_z + W / 2
+z_lane0 = z_acc0 + n_acc * t_acc
+assert z_lane0 + 1.0 < zf0
+
+
+def edge_posts(a, b, fixed, along_x, top, skip=None):
+    """Uprights from a to b (at most 2.4 m apart) on a lane edge at fixed x (along z) or fixed z (along x)."""
+    spans = [(a, b)] if skip is None else [(a, skip[0]), (skip[1], b)]
+    for (p, q) in spans:
+        n_p = max(1, int(math.ceil(abs(q - p) / 2.4)))
+        for k in range(n_p + 1):
+            v = p + (q - p) * k / n_p
+            post(v, fixed, top) if along_x else post(fixed, v, top)
+
+
+def lane(x0, x1, z0, z1, outer_edges, skip=None, rail_z=None):
+    """Deck at LH, uprights on all four edges (rail height on the outer ones), rails along the outer edges.
+    outer_edges: subset of "-x", "+x", "-z", "+z"; rail_z = (a, b): the rails along z only there (a lane branches
+    off beside the rest)."""
+    x0, x1 = min(x0, x1), max(x0, x1)
+    deck(x0, x1, z0, z1, LH)
+    for side, fixed, along_x, a, b in (("-x", x0, False, z0, z1), ("+x", x1, False, z0, z1),
+                                       ("-z", z0, True, x0, x1), ("+z", z1, True, x0, x1)):
+        outer = side in outer_edges
+        if outer and not along_x and rail_z:               # rail part only; no uprights where the other lane joins
+            ra, rb = rail_z
+            edge_posts(ra, rb, fixed, False, LH + RAIL)
+            for end in (e for e in (a, b) if not ra - 0.01 <= e <= rb + 0.01):
+                post(fixed, end, LH + 0.1)
+            rail(fixed, fixed, ra + 0.03, rb - 0.03, LH + RAIL)
+            continue
+        edge_posts(a, b, fixed, along_x, LH + (RAIL if outer else 0.1), skip if not along_x else None)
+        if outer:
+            if along_x:
+                rail(a, b, fixed, fixed, LH + RAIL)
+            else:                                          # butting against the rails along x at the corners
+                rail(fixed, fixed, a + 0.03, b - 0.03, LH + RAIL)
+
+
+for s in (1, -1):
+    xi, xo = s * L_IN, s * L_OUT
+    acc = []                                               # stair down from the back lane
+    for i in range(n_acc):
+        zc, walk = z_acc0 + (i + 0.5) * t_acc, H_ACCESS - (i + 1) * STEP_RISE
+        plank(min(xi, xo), max(xi, xo), zc - t_acc / 2 - 0.015, zc + t_acc / 2 + 0.015, walk)
+        acc.append(((xi + xo) / 2, zc, walk, 0))
+    flights.append((acc, [False] * 4, t_acc))
+    sx_out = "+x" if s > 0 else "-x"
+    sx_in = "-x" if s > 0 else "+x"
+    lane(xi, xo, z_lane0, zf1, (sx_out,), rail_z=(z_lane0, zf0))                  # nave
+    x_face = XE0 if s > 0 else x_north_face
+    lane(xo, s * x_face, zf0, zf1, ("-z",))                                       # transept west wall
+    lane(s * XE0, s * XE1, zf0 if s > 0 else z_north_end, ze1, (sx_out, "+z", "-z"), skip=PORTAL)  # transept end
+    lane(xo, s * XE0, ze0, ze1, ("+z",))                                          # transept east wall
+    lane(xi, xo, ze0, za1, (sx_out, "+z"), rail_z=(ze1, za1))                     # choir and apse side
+lane(-L_IN, L_IN, za0, za1, ("+z",))                                              # east of the apse
+
 # Stair flights: a block under a first step near the ground, a stringer under both edges of every flight
 for st_steps, along_x, tread in flights:
     if not st_steps:
@@ -915,41 +1040,6 @@ for st_steps, along_x, tread in flights:
                       (xb + ux * tread / 2 + ox, wb - PLANK - 0.05, zb + uz * tread / 2 + oz), 0.08)
         if stp is not None:
             run = [stp]
-# Uprights the decks were still missing: platform between the towers, cross bridge, inner edge of the back lanes
-mid_lv = [h for h in front_lv if GALLERY_TOP + 0.15 < h <= DECK - 2.2]
-if mid_lv:
-    for xx in (-(X_IN - C_TW), X_IN - C_TW):
-        for zz in (front_z + W / 2, TWM + C_TW):
-            post(xx, zz, mid_lv[-1] + 0.1)
-for xx in (-(x_tw - 0.15), x_tw - 0.15):                  # cross bridge, up to its rails
-    for zz in (z_cross - W / 2, z_cross + W / 2):
-        post(xx, zz, DECK + RAIL)
-# Back lanes: uprights on both edges, through the aisle roof down to the plinth: where the low lanes start, at the
-# corner with the outer lane and at its outer edge
-x_low = (HALF_N + 1) * CELL
-xs_back = [W / 2 + 0.35, x_low + 0.1, (x_low + 0.1 + lane_x - W / 2) / 2, lane_x - W / 2, lane_x + W / 2]
-for sx in (1, -1):
-    for xx in xs_back:
-        post(sx * xx, back_z - W / 2, back_lv[-1] + 0.1)
-    bz_out = back_z + W / 2
-    row = [post(sx * xx, bz_out, back_lv[-1] + RAIL) for xx in xs_back]
-    post(sx * (lane_x + W / 2), zs_tw + MID_T + W / 2, back_lv[-1] + RAIL)
-    for (fa, xa, za), (fb, xb, zb) in zip(row, row[1:]):
-        y0 = max(fa, fb) + 0.3
-        braces((xa, za + 0.06), (xb, zb + 0.06), y0, back_lv[-1])
-
-# Ramps for the game's mobile scaffold, which rolls on wheels of 9.8 cm radius over ground up to 45 degrees (measured)
-# and so cannot climb the plinth's 21 cm steps: 15 degrees from the ground up to the plinth, on both long sides just
-# behind the bell tower stairs, where the plinth is widened for it (PLINTH_SIDE). Entries with a tenth value 1 are
-# rotated boxes that are walkable (the mod gives them a collider).
-PLINTH_SIDE = 25 * 0.42                                    # long sides of the plinth (its 0.42 m cell grid)
-RAMP_DEG, RAMP_W, RAMP_T, RAMP_Z = 15.0, 4.0, 0.08, 12.0   # slope, width, board, middle along z
-ramp_run = BASE_H_SCAF / math.tan(math.radians(RAMP_DEG))
-for sx in (1, -1):
-    a = math.radians(RAMP_DEG)
-    mx, my = sx * (PLINTH_SIDE + ramp_run / 2), -BASE_H_SCAF / 2      # middle of the top face (0 = plinth top)
-    scaffold.append((mx - sx * math.sin(a) * RAMP_T / 2, my - math.cos(a) * RAMP_T / 2, RAMP_Z,
-                     ramp_run / math.cos(a), RAMP_T, RAMP_W, 0.0, 0.0, -sx * RAMP_DEG, 1.0))
 
 # ---- 7) Brick packing: 2x1 blocks in running bond with bonded corners ----
 # Wanted pattern first: at a corner, a junction or inside a solid block (piers, pinnacles) the 2x1 block lies across
