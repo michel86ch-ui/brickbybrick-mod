@@ -762,14 +762,17 @@ namespace ExtraBuildings
             {
                 var c = new Vector3(b[0], b[1], b[2]);
                 var s = new Vector3(b[3], b[4], b[5]);
-                Quaternion r = b.Length >= 9 ? Quaternion.Euler(b[6], b[7], b[8]) : Quaternion.identity;
-                bool slim = b.Length >= 9 || Mathf.Min(s.x, s.z) < 0.15f;
+                bool rotated = b.Length >= 9;
+                Quaternion r = rotated ? Quaternion.Euler(b[6], b[7], b[8]) : Quaternion.identity;
+                bool walkable = !rotated || (b.Length >= 10 && b[9] > 0.5f);     // a rotated box is a brace, unless marked (ramps)
+                bool slim = (rotated && !walkable) || Mathf.Min(s.x, s.z) < 0.15f;
                 (slim ? poles : planks).Add(new CombineInstance { mesh = slim ? poleMesh : plankMesh, transform = Matrix4x4.TRS(c, r, s) });
-                if (b.Length < 9)
+                if (walkable)
                 {
                     var go = new GameObject("ScaffoldCollider") { layer = groundLayer };
                     go.transform.SetParent(container.transform, false);
                     go.transform.localPosition = c;
+                    go.transform.localRotation = r;
                     go.AddComponent<BoxCollider>().size = s;
                     solid++;
                 }

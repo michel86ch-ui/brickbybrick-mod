@@ -576,6 +576,7 @@ accents.append(("gold1", 0, spire_top, Z_X))
 # Walking surfaces are the tops of 6 cm planks; steps rise one cell (0.21 m) per 0.42 m. No two boxes share a face
 # plane where they overlap (z-fighting): ledgers are 5 cm, rails and stringers 6 to 8 cm, uprights 12 cm.
 scaffold = []   # (cx, cy, cz, sx, sy, sz) meters
+BASE_H_SCAF = 0.42                                         # plinth height (= BASE_H of the mod blueprint)
 W, PLANK, RAIL, POST = 1.3, 0.06, 1.0, 0.12   # walkways wider than the player (capsule radius 0.5 m, step offset 0.30 m)
 STEP_RISE, STEP_RUN = CELL, 2 * CELL
 
@@ -936,6 +937,19 @@ for sx in (1, -1):
     for (fa, xa, za), (fb, xb, zb) in zip(row, row[1:]):
         y0 = max(fa, fb) + 0.3
         braces((xa, za + 0.06), (xb, zb + 0.06), y0, back_lv[-1])
+
+# Ramps for the game's mobile scaffold, which rolls on wheels of 9.8 cm radius over ground up to 45 degrees (measured)
+# and so cannot climb the plinth's 21 cm steps: 15 degrees from the ground up to the plinth, on both long sides just
+# behind the bell tower stairs, where the plinth is widened for it (PLINTH_SIDE). Entries with a tenth value 1 are
+# rotated boxes that are walkable (the mod gives them a collider).
+PLINTH_SIDE = 25 * 0.42                                    # long sides of the plinth (its 0.42 m cell grid)
+RAMP_DEG, RAMP_W, RAMP_T, RAMP_Z = 15.0, 4.0, 0.08, 12.0   # slope, width, board, middle along z
+ramp_run = BASE_H_SCAF / math.tan(math.radians(RAMP_DEG))
+for sx in (1, -1):
+    a = math.radians(RAMP_DEG)
+    mx, my = sx * (PLINTH_SIDE + ramp_run / 2), -BASE_H_SCAF / 2      # middle of the top face (0 = plinth top)
+    scaffold.append((mx - sx * math.sin(a) * RAMP_T / 2, my - math.cos(a) * RAMP_T / 2, RAMP_Z,
+                     ramp_run / math.cos(a), RAMP_T, RAMP_W, 0.0, 0.0, -sx * RAMP_DEG, 1.0))
 
 # ---- 7) Brick packing: 2x1 blocks in running bond with bonded corners ----
 # Wanted pattern first: at a corner, a junction or inside a solid block (piers, pinnacles) the 2x1 block lies across
@@ -1391,7 +1405,8 @@ floating = free
 # Plinth: 0.42 m cells marked from rectangles (building with facade scaffold, bell tower stairs, transept stair)
 rects = [(-8.82, 8.82, -2.1, max(r[3] for r in rows) / 100 + 0.42),
          (-(lane_x + 2 * MID_T + W / 2 + 0.15), lane_x + 2 * MID_T + W / 2 + 0.15, -2.1, zs_tw + MID_T + W / 2 + 0.2),
-         (cx_t - MID_T - W / 2 - 0.2, -8.82, cz_t - MID_T - W / 2 - 0.2, cz_t + MID_T + W / 2 + 0.2)]
+         (cx_t - MID_T - W / 2 - 0.2, -8.82, cz_t - MID_T - W / 2 - 0.2, cz_t + MID_T + W / 2 + 0.2),
+         (-PLINTH_SIDE, PLINTH_SIDE, 3.0, 29.0)]                  # room for the mobile scaffold along the long sides
 U = 0.42
 cells = set()
 for (x0, x1, z0, z1) in rects:
@@ -1444,9 +1459,10 @@ blueprint_mod = {
                "blueprintStand": [(-8.4, -5.6, -2.8, 2.8, 5.6)[pi], round(z_front - 1.2, 3), 0]}
               for pi, (sid, name, _) in enumerate(PARTS)],
     # supply: west of the cathedral and south of the choir, for the site at X 3.5, Z 0.4, rotation 180
-    "pile": {"x": 12.0, "z": -21.1, "gap": 0.06, "perRow": 10, "stack": 10, "maxHeight": 2.3,
-             "areas": [[12.0, -21.1, 24.5, 15.4], [-10.5, 20.7, 9.5, 23.9], [-15.5, -15.2, -11.0, -4.6],
-                       [-15.5, -20.6, -12.4, -15.2]]},          # (the last one beside the west stair tower's plinth)
+    "pile": {"x": 12.0, "z": -21.1, "gap": 0.06, "perRow": 10, "stack": 14, "maxHeight": 3.0,
+             "areas": [[14.6, -21.1, 24.5, 15.4], [-10.5, 20.7, 9.5, 23.9], [-18.0, -20.6, -14.6, -15.2],
+                       [-18.0, -15.2, -14.6, 0.0]]},            # 2.4 m left for the mobile scaffold to the ramps;
+                                                                # the last area is the long one (room for more)
     "colliders": colliders,
     "decor": decor,
     "scaffold": [[round(b[0], 4), round(b[1] + BASE_H, 4), round(b[2] - ZC, 4)] + [round(v, 4) for v in b[3:6]] + [round(a, 2) for a in b[6:]]

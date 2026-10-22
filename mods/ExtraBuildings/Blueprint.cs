@@ -23,7 +23,8 @@ namespace ExtraBuildings
         public DecorSpec[] decor;
         /// <summary>
         /// Scaffold parts (local, y above ground): [cx, cy, cz, sx, sy, sz] = walkable box with a collider;
-        /// [cx, cy, cz, sx, sy, sz, pitch, yaw, roll] = rotated part (braces), visuals only.
+        /// [cx, cy, cz, sx, sy, sz, pitch, yaw, roll] = rotated part (braces), visuals only; with a tenth value 1 the
+        /// rotated part is walkable too (ramps).
         /// </summary>
         public float[][] scaffold;
         public BrickSpec[] bricks;
