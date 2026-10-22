@@ -604,65 +604,89 @@ def deck(x0, x1, z0, z1, walk, ledgers=None):
             rail(xx, xx, a, b, y, 0.05)
 
 
-def spiral(cx, cz, mid, corners, phase, y0, n):
-    """n steps on a square ring (centerline half-size mid) around (cx, cz), walked in corner order; step i walks at
-    y0 + i * STEP_RISE. Returns [(x, z, walk, side)] of the step centers."""
-    side = 2 * mid
-    out = []
-    for i in range(n):
-        along = (phase + i * STEP_RUN) % (4 * side)
-        s_idx = int(along // side)
-        f = (along - s_idx * side) / side
-        (ax0, az0), (ax1, az1) = corners[s_idx], corners[(s_idx + 1) % 4]
-        px_m = cx + (ax0 + (ax1 - ax0) * f) * mid
-        pz_m = cz + (az0 + (az1 - az0) * f) * mid
-        walk = y0 + i * STEP_RISE
-        if ax0 != ax1:          # 45 cm: the step ends miss the faces of the uprights at the corners
-            plank(px_m - STEP_RUN / 2 - 0.015, px_m + STEP_RUN / 2 + 0.015, pz_m - W / 2, pz_m + W / 2, walk)
-        else:
-            plank(px_m - W / 2, px_m + W / 2, pz_m - STEP_RUN / 2 - 0.015, pz_m + STEP_RUN / 2 + 0.015, walk)
-        out.append((px_m, pz_m, walk, s_idx))
-    flights.append((out, ax_of(corners)))
-    return out
-
-
-flights = []        # every spiral's steps, for the stringers added once brace() exists
+# Stairs like a scaffold stair tower: a square ring (corner centers at cx +- mid, cz +- mid, walked in `corners` order),
+# a square landing W x W at every corner and straight flights between them, as many 21 cm risers as fit on a side
+# (treads of at least 42 cm). Nothing climbs on a landing, and lanes and bridges leave from landings, so a stair never
+# turns on its steps.
+flights = []        # every stair's steps (with their tread), for the stringers added once brace() exists
 
 
 def ax_of(corners):
     return [corners[k][0] != corners[(k + 1) % 4][0] for k in range(4)]     # side k runs along x?
 
 
-def side_of(phase, i, side):
-    return int(((phase + i * STEP_RUN) % (4 * side)) // side)
+def stair_geometry(mid):
+    k = int((2 * mid - W + 1e-9) // STEP_RUN)              # steps per side
+    return k, (2 * mid - W) / k
 
 
-# Spiral around drum and spire. Its first step lies one cell above the ridge (the apostles stand outside it), the step at
-# tower height sits in the middle of the west side, and it ends at a corner so the top platform leaves the last
-# flight open (headroom).
+def flight(cx, cz, mid, corners, a, u, m, out):
+    """m steps on side a (from corner a to corner a + 1), on the places next to corner a + 1; the first one climbs
+    from u units (cells) of height."""
+    k, t = stair_geometry(mid)
+    (ax0, az0), (ax1, az1) = corners[a % 4], corners[(a + 1) % 4]
+    dx, dz = (ax1 - ax0) / 2, (az1 - az0) / 2
+    for i in range(m):
+        d = W / 2 + (k - m + i + 0.5) * t                  # from the corner a center along the side
+        px, pz = cx + ax0 * mid + dx * d, cz + az0 * mid + dz * d
+        walk = (u + 1 + i) * STEP_RISE
+        if dx:
+            plank(px - t / 2 - 0.015, px + t / 2 + 0.015, pz - W / 2, pz + W / 2, walk)
+        else:
+            plank(px - W / 2, px + W / 2, pz - t / 2 - 0.015, pz + t / 2 + 0.015, walk)
+        out.append((px, pz, walk, a % 4))
+
+
+def corner_square(cx, cz, mid, corner, walk):
+    kx, kz = cx + corner[0] * mid, cz + corner[1] * mid
+    plank(kx - W / 2, kx + W / 2, kz - W / 2, kz + W / 2, walk)
+
+
+def stair(cx, cz, mid, corners, c_top, u_top, c_start=None, u_start=0):
+    """Stair up to a landing at corner c_top, u_top cells high: from the plinth (the first flight is cut to the height
+    left over), or from a landing at corner c_start, u_start cells high. Returns [(corner, height)] of its landings."""
+    k, t = stair_geometry(mid)
+    per = k + 1                                            # cells per side: k steps + the riser onto the landing
+    out, levels = [], []
+    if c_start is None:
+        n_full = (u_top - 1) // per
+        r = u_top - n_full * per                           # 1 .. per: the first landing
+        c, u = (c_top - n_full) % 4, r
+        flight(cx, cz, mid, corners, c - 1, 0, r - 1, out)
+    else:
+        assert (u_top - u_start) % per == 0 and (c_start + (u_top - u_start) // per) % 4 == c_top % 4, "stair does not fit"
+        c, u = c_start % 4, u_start
+    corner_square(cx, cz, mid, corners[c], u * STEP_RISE)
+    levels.append((c, u * STEP_RISE))
+    while u < u_top:
+        flight(cx, cz, mid, corners, c, u, k, out)
+        c, u = (c + 1) % 4, u + per
+        corner_square(cx, cz, mid, corners[c], u * STEP_RISE)
+        levels.append((c, u * STEP_RISE))
+    flights.append((out, ax_of(corners), t))
+    return levels
+
+
+# Stair around drum and spire: from a landing one cell above the ridge (bridge 1 arrives there from the stair tower,
+# the apostles stand outside the ring) up to a top platform, from which the spire tip is within reach. The platform
+# covers three corners and two sides plus the side above the flight before the last; the last flight and the landing
+# below the platform stay open (headroom).
 MID = max(RING_R + 0.27, r0 + 0.215) + 0.05 + W / 2      # inner edge clear of drum and spire base
 A_IN, B_OUT = MID - W / 2, MID + W / 2
-SIDE = 2 * MID
 DRUM_CORNERS = [(-1, -1), (1, -1), (1, 1), (-1, 1)]       # side 0 = west side, walked towards +x
 BASE_CELLS = DRUM_Y0 + 1
 y_base = BASE_CELLS * CELL
 DECK = H_T * CELL                                          # tower platforms
-i_deck = H_T - BASE_CELLS
-phase = (MID - i_deck * STEP_RUN) % (4 * SIDE)
+k_d, _ = stair_geometry(MID)
 y_top_target = (spire_top + 1) * CELL - 4.5                # spire tip within 5 m reach from the top platform
-n = int(math.ceil((y_top_target - y_base) / STEP_RISE))
-while side_of(phase, n, SIDE) == side_of(phase, n - 1, SIDE):
-    n += 1
-steps = spiral(cxm, czm, MID, DRUM_CORNERS, phase, y_base, n)
-assert steps[0][3] == 0 and steps[i_deck][3] == 0 and abs(steps[i_deck][0] - cxm) < 0.01, "spiral junctions moved"
-y_top = y_base + n * STEP_RISE
-last_side = steps[-1][3]
-for (ax, az) in DRUM_CORNERS:                              # top platform: corners + three sides
-    plank(cxm + ax * MID - W / 2, cxm + ax * MID + W / 2, czm + az * MID - W / 2, czm + az * MID + W / 2, y_top)
-for s_idx in range(4):
-    if s_idx == last_side:
-        continue
-    (ax0, az0), (ax1, az1) = DRUM_CORNERS[s_idx], DRUM_CORNERS[(s_idx + 1) % 4]
+n_d = int(math.ceil((y_top_target - y_base) / ((k_d + 1) * STEP_RISE)))
+c_end = n_d % 4
+drum_levels = stair(cxm, czm, MID, DRUM_CORNERS, c_end, BASE_CELLS + n_d * (k_d + 1), c_start=0, u_start=BASE_CELLS)
+y_top = drum_levels[-1][1]
+for j in (1, 2):                                           # the platform's other corners
+    corner_square(cxm, czm, MID, DRUM_CORNERS[(c_end + j) % 4], y_top)
+for s_idx in (c_end, c_end + 1, c_end + 2):                # its sides (not the last flight's)
+    (ax0, az0), (ax1, az1) = DRUM_CORNERS[s_idx % 4], DRUM_CORNERS[(s_idx + 1) % 4]
     xm, zm = cxm + (ax0 + ax1) / 2 * MID, czm + (az0 + az1) / 2 * MID
     if ax0 != ax1:
         plank(xm - MID + W / 2, xm + MID - W / 2, zm - W / 2, zm + W / 2, y_top)
@@ -673,20 +697,16 @@ rail(cxm - B_OUT, cxm + B_OUT, czm + B_OUT, czm + B_OUT, y_top + RAIL)
 rail(cxm - B_OUT, cxm - B_OUT, czm - B_OUT + 0.03, czm + B_OUT - 0.03, y_top + RAIL)    # butting, not crossing
 rail(cxm + B_OUT, cxm + B_OUT, czm - B_OUT + 0.03, czm + B_OUT - 0.03, y_top + RAIL)
 
-# Stair tower from the ground; its last flight runs towards +x on the line of the drum ring's west side
-MID_T = 1.2
-SIDE_T = 2 * MID_T
+# Stair tower from the ground; its top landing lies on the line of the drum ring's west side, at bridge height
+MID_T = 1.72                                               # 5 steps per side: 5.04 m per turn, as many turns as before
 T_CORNERS = [(-1, 1), (1, 1), (1, -1), (-1, -1)]
 cz_t = czm - MID - MID_T
 cx_t = -(HALF_T * CELL + 0.3 + MID_T + W / 2)
-n_t = BASE_CELLS - 1                                       # walks 0.21 m ... one step below the bridge
-phase_t = (SIDE_T - STEP_RUN / 2 - (n_t - 1) * STEP_RUN) % (4 * SIDE_T)
-spiral(cx_t, cz_t, MID_T, T_CORNERS, phase_t, STEP_RISE, n_t)
+stair(cx_t, cz_t, MID_T, T_CORNERS, 1, BASE_CELLS)
 
-# Bridge 1 (ridge height): stair tower -> first spiral step
+# Bridge 1 (ridge height): from the stair tower's top landing to the drum stair's first landing
 z_b1 = czm - MID
-deck(cx_t + MID_T, steps[0][0] - STEP_RUN / 2 - 0.015, z_b1 - W / 2, z_b1 + W / 2, y_base,
-     ledgers=(cx_t + MID_T + W / 2, steps[0][0] + STEP_RUN / 2))     # from the stair tower's corner, under the first step
+deck(cx_t + MID_T + W / 2, cxm - B_OUT, z_b1 - W / 2, z_b1 + W / 2, y_base)
 for zz in (z_b1 - W / 2, z_b1 + W / 2):
     rail(cx_t + MID_T + W / 2, cxm - B_OUT, zz, zz, y_base + RAIL)
 # Cross bridge between the bell towers (tower height)
@@ -715,12 +735,10 @@ tw_stairs = []
 for sx in (1, -1):
     corners = [(-1, -1), (-1, 1), (1, 1), (1, -1)] if sx > 0 else [(1, -1), (1, 1), (-1, 1), (-1, -1)]
     cx_s = sx * (X_OUT + C_TW + MID_T + W / 2)
-    ph = (SIDE_T - STEP_RUN / 2 - (H_T - 1) * STEP_RUN) % (4 * SIDE_T)   # last step: end of the inner side, at DECK
-    st = spiral(cx_s, zs_tw, MID_T, corners, ph, STEP_RISE, H_T)
-    tw_stairs.append((cx_s, corners, st))
-    alongs = [(ph + i * STEP_RUN) % (4 * SIDE_T) for i in range(H_T)]
-    front_lv = sorted({round(st[i][2], 3) for i in range(H_T) if min(alongs[i], 4 * SIDE_T - alongs[i]) < STEP_RUN / 2})
-    back_lv = sorted({round(st[i][2], 3) for i in range(H_T) if abs(alongs[i] - SIDE_T) < STEP_RUN / 2 + 0.01})
+    levels = stair(cx_s, zs_tw, MID_T, corners, 1, H_T)   # top landing at corner 1, next to the tower, at DECK
+    tw_stairs.append((cx_s, corners))
+    front_lv = sorted({round(y, 3) for c, y in levels if c == 0})        # landings at the facade lane
+    back_lv = sorted({round(y, 3) for c, y in levels if c == 1})         # landings at the outer lane
 front_lv = [h for h in front_lv if 3.0 <= h <= DECK - 2.2]
 back_lv = [h for h in back_lv if h >= (H_A + AISLE_RISE + 2) * CELL]
 assert back_lv and abs(back_lv[-1] - DECK) < 0.01, "tower stair does not end at the platform"
@@ -743,39 +761,6 @@ for sx in (1, -1):
     for zc in range(int(math.floor((TWM / 2 - W / 2) / CELL)), int(math.ceil((TWM / 2 + W / 2) / CELL))):
         for y in (H_T, H_T + 1):
             vox.pop((xc, y, zc), None)
-
-
-def landing(steps_, along_x, kx, kz, h):
-    """Where a lane leaves a stair ring at level h, the step there covers only part of the corner square (center kx,
-    kz): boards fill the rest of the square at that level, around the footprints of the steps just below, at and just
-    above it, so there is no gap to fall through between the stair and the lane."""
-    half = STEP_RUN / 2 + 0.015
-    feet = []
-    for (px, pz, walk, side) in steps_:
-        if abs(walk - h) <= STEP_RISE + 0.01:
-            feet.append((px - half, px + half, pz - W / 2, pz + W / 2) if along_x[side] else (px - W / 2, px + W / 2, pz - half, pz + half))
-    x0, x1, z0, z1 = kx - W / 2, kx + W / 2, kz - W / 2, kz + W / 2
-    xs = sorted({x0, x1} | {min(max(v, x0), x1) for f in feet for v in f[:2]})
-    zs = sorted({z0, z1} | {min(max(v, z0), z1) for f in feet for v in f[2:]})
-    for xa, xb in zip(xs, xs[1:]):
-        if xb - xa < 0.02:
-            continue
-        run = None
-        for za, zb in list(zip(zs, zs[1:])) + [(None, None)]:
-            free = za is not None and zb - za >= 0.005 and not any(
-                f[0] < (xa + xb) / 2 < f[1] and f[2] < (za + zb) / 2 < f[3] for f in feet)
-            if free:
-                run = (run[0] if run else za, zb)
-                continue
-            if run and run[1] - run[0] >= 0.02:
-                plank(xa, xb, run[0], run[1], h)
-            run = None
-
-
-for (cx_s, corners, st) in tw_stairs:                      # facade lane at corner 0, outer lane at corner 1
-    for h_list, k in ((front_lv, 0), (back_lv, 1)):
-        for h in h_list:
-            landing(st, ax_of(corners), cx_s + corners[k][0] * MID_T, zs_tw + corners[k][1] * MID_T, h)
 
 # Posts down to whatever is below (roof, wall top or ground)
 col_ys = {}
@@ -861,10 +846,11 @@ def row_posts(x0, x1, z, top, step=2.4):
 
 
 def tower_frame(cx, cz, mid, top, skip_sides=()):
-    """Corner uprights of a square stair tower or ring plus braces on its outer faces."""
+    """Uprights at the four corners of every corner landing of a square stair tower or ring, braces on its outer faces."""
     feet = {}
     for (ax, az) in [(-1, -1), (1, -1), (1, 1), (-1, 1)]:
-        post(cx + ax * (mid - W / 2), cz + az * (mid - W / 2), top)
+        for a, b in ((mid - W / 2, mid - W / 2), (mid + W / 2, mid - W / 2), (mid - W / 2, mid + W / 2)):
+            post(cx + ax * a, cz + az * b, top)
         feet[(ax, az)] = post(cx + ax * (mid + W / 2), cz + az * (mid + W / 2), top)[0]
     o = mid + W / 2 + 0.06
     for side, (c0, c1) in {"-z": ((-1, -1), (1, -1)), "+x": ((1, -1), (1, 1)), "+z": ((1, 1), (-1, 1)), "-x": ((-1, 1), (-1, -1))}.items():
@@ -883,16 +869,15 @@ def bridge_trestle(pts_a, pts_b):
                 brace((xa, y0, za), (xb, ta - 0.3, zb))
 
 
-tower_frame(cxm, czm, MID, y_top + RAIL, skip_sides=("-z",))       # bridge 1 runs along the west side of the ring
-tower_frame(cx_t, cz_t, MID_T, y_base + RAIL, skip_sides=("+z",))  # bridge 1 leaves the stair tower to the east
-for (cx_s, _, _) in tw_stairs:                                     # bell tower stairs: lanes join on the inner side
-    tower_frame(cx_s, zs_tw, MID_T, DECK + RAIL, skip_sides=("-x" if cx_s > 0 else "+x",))
+tower_frame(cxm, czm, MID, y_top + RAIL, skip_sides=("-x",))       # no braces where bridges and lanes pass a face
+tower_frame(cx_t, cz_t, MID_T, y_base + RAIL, skip_sides=("+x",))
+for (cx_s, _) in tw_stairs:                                        # facade lane in at corner 0, outer lane out at 1
+    tower_frame(cx_s, zs_tw, MID_T, DECK + RAIL, skip_sides=("-x" if cx_s > 0 else "+x", "+z"))
 x0_b1, x1_b1 = cx_t + MID_T + W / 2 + 0.3, cxm - B_OUT - 0.3
 edges = []
 for zz in (z_b1 - W / 2, z_b1 + W / 2):
     edges.append([(x, z, f, y_base + RAIL - 0.2) for (f, x, z) in row_posts(x0_b1, x1_b1, zz, y_base + RAIL)])
     post(cxm - B_OUT, zz, y_base + RAIL)                                  # where the rails end
-    post(steps[0][0] - STEP_RUN / 2 + POST / 2, zz, y_base - PLANK - 0.05)   # under the ledgers at the first step
 bridge_trestle(*edges)
 # Facade scaffold: uprights on both edges of the facade lane, braces in its outer plane between the levels
 fz_out = front_z - W / 2
@@ -905,12 +890,16 @@ for (_, xa, za), (_, xb, zb) in zip(row_out, row_out[1:]):
         p, q = ((xa, za), (xb, zb)) if k % 2 == 0 else ((xb, zb), (xa, za))
         brace((p[0], ya, p[1] - 0.06), (q[0], yb, q[1] - 0.06))
 # Stair flights: a block under a first step near the ground, a stringer under both edges of every flight
-for st_steps, along_x in flights:
+for st_steps, along_x, tread in flights:
+    if not st_steps:
+        continue
     x_f, z_f, w_f, side_f = st_steps[0]
     if w_f - PLANK < 0.5:
-        lx, lz = (STEP_RUN, W - 0.1) if along_x[side_f] else (W - 0.1, STEP_RUN)
+        lx, lz = (tread, W - 0.1) if along_x[side_f] else (W - 0.1, tread)
         scaffold.append((x_f, (w_f - PLANK) / 2, z_f, lx, w_f - PLANK, lz))
-for st_steps, along_x in flights:
+for st_steps, along_x, tread in flights:
+    if not st_steps:
+        continue
     run = [st_steps[0]]
     for stp in st_steps[1:] + [None]:
         if stp is not None and stp[3] == run[-1][3]:
@@ -921,8 +910,8 @@ for st_steps, along_x in flights:
             ux, uz = (1 if xb > xa else -1, 0) if along_x[side] else (0, 1 if zb > za else -1)
             for off in (-(W / 2 - 0.06), W / 2 - 0.06):
                 ox, oz = (0, off) if along_x[side] else (off, 0)
-                brace((xa - ux * STEP_RUN / 2 + ox, wa - PLANK - 0.05, za - uz * STEP_RUN / 2 + oz),
-                      (xb + ux * STEP_RUN / 2 + ox, wb - PLANK - 0.05, zb + uz * STEP_RUN / 2 + oz), 0.08)
+                brace((xa - ux * tread / 2 + ox, wa - PLANK - 0.05, za - uz * tread / 2 + oz),
+                      (xb + ux * tread / 2 + ox, wb - PLANK - 0.05, zb + uz * tread / 2 + oz), 0.08)
         if stp is not None:
             run = [stp]
 # Uprights the decks were still missing: platform between the towers, cross bridge, inner edge of the back lanes
@@ -1401,7 +1390,7 @@ floating = free
 
 # Plinth: 0.42 m cells marked from rectangles (building with facade scaffold, bell tower stairs, transept stair)
 rects = [(-8.82, 8.82, -2.1, max(r[3] for r in rows) / 100 + 0.42),
-         (-(lane_x + MID_T + W / 2 + 0.15), lane_x + MID_T + W / 2 + 0.15, -2.1, zs_tw + MID_T + W / 2 + 0.2),
+         (-(lane_x + 2 * MID_T + W / 2 + 0.15), lane_x + 2 * MID_T + W / 2 + 0.15, -2.1, zs_tw + MID_T + W / 2 + 0.2),
          (cx_t - MID_T - W / 2 - 0.2, -8.82, cz_t - MID_T - W / 2 - 0.2, cz_t + MID_T + W / 2 + 0.2)]
 U = 0.42
 cells = set()
@@ -1456,7 +1445,8 @@ blueprint_mod = {
               for pi, (sid, name, _) in enumerate(PARTS)],
     # supply: west of the cathedral and south of the choir, for the site at X 3.5, Z 0.4, rotation 180
     "pile": {"x": 12.0, "z": -21.1, "gap": 0.06, "perRow": 10, "stack": 10, "maxHeight": 2.3,
-             "areas": [[12.0, -21.1, 24.5, 15.4], [-10.5, 20.7, 9.5, 23.9], [-15.5, -20.6, -11.0, -4.6]]},
+             "areas": [[12.0, -21.1, 24.5, 15.4], [-10.5, 20.7, 9.5, 23.9], [-15.5, -15.2, -11.0, -4.6],
+                       [-15.5, -20.6, -12.4, -15.2]]},          # (the last one beside the west stair tower's plinth)
     "colliders": colliders,
     "decor": decor,
     "scaffold": [[round(b[0], 4), round(b[1] + BASE_H, 4), round(b[2] - ZC, 4)] + [round(v, 4) for v in b[3:6]] + [round(a, 2) for a in b[6:]]
