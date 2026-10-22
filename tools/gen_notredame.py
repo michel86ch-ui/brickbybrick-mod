@@ -989,7 +989,13 @@ def pack_layer(cells, y, below, joints_below):
         if lead and wall_end(run[0], d):
             reveal.add(run[0])
         if wall_before and wall_after and len(rest) % 2:
-            k = (len(rest) // 2) & ~1                           # the 1x1 in the middle, pairs on both sides
+            # One 1x1 between two corners, pairs on both sides: it goes where the fewest joints come to lie on a joint
+            # of the layer below (a fixed place would keep one side's joints stacked while the corners alternate).
+            def stacked(k):
+                paired = set(range(0, k, 2)) | set(range(k + 1, len(rest) - 1, 2))
+                return sum(1 for i in range(len(rest) - 1) if i not in paired
+                           and ((rest[i][0], rest[i][2]), (rest[i + 1][0], rest[i + 1][2])) in joints_below)
+            k = min(range(0, len(rest), 2), key=lambda k: (stacked(k), abs(k - len(rest) // 2)))
             pairs = [(rest[j], rest[j + 1]) for j in range(0, k, 2)] + [(rest[j], rest[j + 1]) for j in range(k + 1, len(rest) - 1, 2)]
         else:
             pairs = [(rest[j], rest[j + 1]) for j in range(0, len(rest) - 1, 2)]
