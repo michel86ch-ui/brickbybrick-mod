@@ -578,6 +578,7 @@ accents.append(("gold1", 0, spire_top, Z_X))
 scaffold = []   # (cx, cy, cz, sx, sy, sz) meters
 BASE_H_SCAF = 0.42                                         # plinth height (= BASE_H of the mod blueprint)
 W, PLANK, RAIL, POST = 1.3, 0.06, 1.0, 0.12   # walkways wider than the player (capsule radius 0.5 m, step offset 0.30 m)
+POST_SPAN = 8.0                                            # uprights along an edge at most this far apart (few, open view)
 STEP_RISE, STEP_RUN = CELL, 2 * CELL
 
 
@@ -616,6 +617,12 @@ def ax_of(corners):
     return [corners[k][0] != corners[(k + 1) % 4][0] for k in range(4)]     # side k runs along x?
 
 
+def transom(x0, x1, z0, z1, walk):
+    """Cross tube under a deck at an upright, carrying both ledgers (a bracket scaffold needs one row of uprights).
+    Tubes along z sit 1 cm lower, so two that cross at a shared upright do not lie in one plane."""
+    rail(x0, x1, z0, z1, walk - PLANK - 0.05 - 0.03 - (0.01 if abs(z1 - z0) > abs(x1 - x0) else 0.0))
+
+
 def stair_geometry(mid):
     k = int((2 * mid - W + 1e-9) // STEP_RUN)              # steps per side
     return k, (2 * mid - W) / k
@@ -639,8 +646,13 @@ def flight(cx, cz, mid, corners, a, u, m, out):
 
 
 def corner_square(cx, cz, mid, corner, walk):
+    """Landing on two ledgers along its outer edges, which meet at the tower's corner upright."""
     kx, kz = cx + corner[0] * mid, cz + corner[1] * mid
     plank(kx - W / 2, kx + W / 2, kz - W / 2, kz + W / 2, walk)
+    ex, ez = kx + corner[0] * (W / 2 - 0.03), kz + corner[1] * (W / 2 - 0.03)
+    rail(ex, ex, kz - W / 2, kz + W / 2, walk - PLANK - 0.025, 0.05)
+    xa, xb = (kx - W / 2, ex - 0.025) if corner[0] > 0 else (ex + 0.025, kx + W / 2)   # butting, not crossing
+    rail(xa, xb, ez, ez, walk - PLANK - 0.025, 0.05)
 
 
 def stair(cx, cz, mid, corners, c_top, u_top, c_start=None, u_start=0):
@@ -851,18 +863,18 @@ def braces(a, b, y0, y1, band=2.4):
         brace((p[0], ya, p[1]), (q[0], yb, q[1]))
 
 
-def row_posts(x0, x1, z, top, step=2.4):
+def row_posts(x0, x1, z, top, step=POST_SPAN):
     """Uprights along x at depth z, at most step apart; returns [(foot, x, z)]."""
     n_p = max(1, int(math.ceil(abs(x1 - x0) / step)))
     return [post(x0 + (x1 - x0) * k / n_p, z, top) for k in range(n_p + 1)]
 
 
 def tower_frame(cx, cz, mid, top, skip_sides=()):
-    """Uprights at the four corners of every corner landing of a square stair tower or ring, braces on its outer faces."""
+    """Uprights at the inner and the outer corner of every corner landing of a square stair tower or ring (the inner
+    ones carry the flights' stringers), braces on its outer faces."""
     feet = {}
     for (ax, az) in [(-1, -1), (1, -1), (1, 1), (-1, 1)]:
-        for a, b in ((mid - W / 2, mid - W / 2), (mid + W / 2, mid - W / 2), (mid - W / 2, mid + W / 2)):
-            post(cx + ax * a, cz + az * b, top)
+        post(cx + ax * (mid - W / 2), cz + az * (mid - W / 2), top)
         feet[(ax, az)] = post(cx + ax * (mid + W / 2), cz + az * (mid + W / 2), top)[0]
     o = mid + W / 2 + 0.06
     for side, (c0, c1) in {"-z": ((-1, -1), (1, -1)), "+x": ((1, -1), (1, 1)), "+z": ((1, 1), (-1, 1)), "-x": ((-1, 1), (-1, -1))}.items():
@@ -872,30 +884,20 @@ def tower_frame(cx, cz, mid, top, skip_sides=()):
         braces((cx + c0[0] * o, cz + c0[1] * o), (cx + c1[0] * o, cz + c1[1] * o), y0, top - RAIL - 0.3)
 
 
-def bridge_trestle(pts_a, pts_b):
-    """Braces between consecutive uprights along both edges of a bridge: pts = [(x, z, foot, top)]."""
-    for pts in (pts_a, pts_b):
-        for (xa, za, fa, ta), (xb, zb, fb, tb) in zip(pts, pts[1:]):
-            y0 = max(fa, fb) + 0.3
-            if ta - 0.3 - y0 > 0.8:
-                brace((xa, y0, za), (xb, ta - 0.3, zb))
-
-
 tower_frame(cxm, czm, MID, y_top + RAIL, skip_sides=("-x", "-z", "+z"))   # no braces where bridges and lanes pass
 tower_frame(cx_t, cz_t, MID_T, y_base + RAIL, skip_sides=("+x", "+z"))
 for (cx_s, _) in tw_stairs:                                        # facade lane in at corner 0, outer lane out at 1
     tower_frame(cx_s, zs_tw, MID_T, DECK + RAIL, skip_sides=("-x" if cx_s > 0 else "+x", "+z"))
-x0_b1, x1_b1 = cx_t + MID_T + W / 2 + 0.3, cxm - B_OUT - 0.3
-edges = []
-for zz in (z_b1 - W / 2, z_b1 + W / 2):
-    edges.append([(x, z, f, y_base + RAIL - 0.2) for (f, x, z) in row_posts(x0_b1, x1_b1, zz, y_base + RAIL)])
-    post(cxm - B_OUT, zz, y_base + RAIL)                                  # where the rails end
-bridge_trestle([], edges[1])                               # (the south edge stands on the clerestory lane's edge)
+for zz in (z_b1 - W / 2, z_b1 + W / 2):                   # bridge 1 spans 5 m from tower to tower: uprights where
+    for xx in (cx_t + MID_T + W / 2, cxm - B_OUT):        # its rails end
+        post(xx, zz, y_base + RAIL)
 # Facade scaffold: uprights on both edges of the facade lane, braces in its outer plane between the levels
 fz_out = front_z - W / 2
 top_f = front_lv[-1] + RAIL
 row_out = row_posts(-(X_OUT + C_TW), X_OUT + C_TW, fz_out, top_f)
-row_posts(-(X_OUT + C_TW), X_OUT + C_TW, front_z + W / 2, top_f)
+for (_, xx, _) in row_out:                                 # one row of uprights: transoms carry the inner ledgers
+    for h in front_lv:
+        transom(xx, xx, front_z - W / 2, front_z + W / 2, h)
 lv = [0.3] + front_lv + [top_f - 0.3]
 for (_, xa, za), (_, xb, zb) in zip(row_out, row_out[1:]):
     for k, (ya, yb) in enumerate(zip(lv, lv[1:])):
@@ -904,24 +906,24 @@ for (_, xa, za), (_, xb, zb) in zip(row_out, row_out[1:]):
 # Uprights the decks were still missing: platform between the towers, cross bridge, inner edge of the back lanes
 mid_lv = [h for h in front_lv if GALLERY_TOP + 0.15 < h <= DECK - 2.2]
 if mid_lv:
-    for xx in (-(X_IN - C_TW), X_IN - C_TW):
-        for zz in (front_z + W / 2, TWM + C_TW):
-            post(xx, zz, mid_lv[-1] + 0.1)
+    for xx in (-(X_IN - C_TW), X_IN - C_TW):              # back corners; its front rests on the facade lane
+        post(xx, TWM + C_TW, mid_lv[-1] + 0.1)
 for xx in (-(x_tw - 0.15), x_tw - 0.15):                  # cross bridge, up to its rails
     for zz in (z_cross - W / 2, z_cross + W / 2):
         post(xx, zz, DECK + RAIL)
 # Back lanes: uprights on both edges, through the aisle roof down to the plinth: where the low lanes start, at the
 # corner with the outer lane and at its outer edge
 x_low = (HALF_N + 1) * CELL
-xs_back = [W / 2 + 0.35, x_low + 0.1, (x_low + 0.1 + lane_x - W / 2) / 2, lane_x - W / 2, lane_x + W / 2]
+xs_back = [x_low + 0.1, lane_x - W / 2, lane_x + W / 2]      # outer row only
 for sx in (1, -1):
-    for xx in xs_back:
-        post(sx * xx, back_z - W / 2, back_lv[-1] + 0.1)
     bz_out = back_z + W / 2
     row = [post(sx * xx, bz_out, back_lv[-1] + RAIL) for xx in xs_back]
     post(sx * (lane_x + W / 2), zs_tw + MID_T + W / 2, back_lv[-1] + RAIL)
-    for xx in (L_IN, L_OUT):                               # where the rail opens for the clerestory stair
-        post(sx * xx, bz_out, H_ACCESS + RAIL)
+    post(sx * L_OUT, bz_out, H_ACCESS + RAIL)              # where the rail opens for the clerestory stair
+    for h in back_lv:                                      # one row of uprights: transoms carry the inner ledger
+        for xx in (x_low + 0.1, L_OUT if abs(h - H_ACCESS) < 0.01 else None):
+            if xx is not None:
+                transom(sx * xx, sx * xx, back_z - W / 2, back_z + W / 2, h)
     for (fa, xa, za), (fb, xb, zb) in zip(row, row[1:]):
         if min(abs(xa), abs(xb)) < L_OUT and max(abs(xa), abs(xb)) > L_IN:
             continue                                       # no braces across the clerestory stair
@@ -963,38 +965,39 @@ z_lane0 = z_acc0 + n_acc * t_acc
 assert z_lane0 + 1.0 < zf0
 
 
-def edge_posts(a, b, fixed, along_x, top, skip=None):
-    """Uprights from a to b (at most 2.4 m apart) on a lane edge at fixed x (along z) or fixed z (along x)."""
-    spans = [(a, b)] if skip is None else [(a, skip[0]), (skip[1], b)]
-    for (p, q) in spans:
-        n_p = max(1, int(math.ceil(abs(q - p) / 2.4)))
-        for k in range(n_p + 1):
-            v = p + (q - p) * k / n_p
-            post(v, fixed, top) if along_x else post(fixed, v, top)
-
-
-def lane(x0, x1, z0, z1, outer_edges, skip=None, rail_z=None):
-    """Deck at LH, uprights on all four edges (rail height on the outer ones), rails along the outer edges.
-    outer_edges: subset of "-x", "+x", "-z", "+z"; rail_z = (a, b): the rails along z only there (a lane branches
-    off beside the rest)."""
+def lane(x0, x1, z0, z1, outer_edges, support, skip=None, rail_z=None):
+    """Deck at LH with uprights along its support edge only (with a transom across the deck at each) and rails along
+    its outer edges; a rail on another edge gets an upright at each end. outer_edges / support: "-x", "+x", "-z", "+z";
+    rail_z = (a, b): the rails along z (and their uprights) only there, because another lane joins beside the rest."""
     x0, x1 = min(x0, x1), max(x0, x1)
     deck(x0, x1, z0, z1, LH)
-    for side, fixed, along_x, a, b in (("-x", x0, False, z0, z1), ("+x", x1, False, z0, z1),
-                                       ("-z", z0, True, x0, x1), ("+z", z1, True, x0, x1)):
-        outer = side in outer_edges
-        if outer and not along_x and rail_z:               # rail part only; no uprights where the other lane joins
-            ra, rb = rail_z
-            edge_posts(ra, rb, fixed, False, LH + RAIL)
-            for end in (e for e in (a, b) if not ra - 0.01 <= e <= rb + 0.01):
-                post(fixed, end, LH + 0.1)
-            rail(fixed, fixed, ra + 0.03, rb - 0.03, LH + RAIL)
-            continue
-        edge_posts(a, b, fixed, along_x, LH + (RAIL if outer else 0.1), skip if not along_x else None)
-        if outer:
+    edges = {"-x": (x0, False, z0, z1), "+x": (x1, False, z0, z1), "-z": (z0, True, x0, x1), "+z": (z1, True, x0, x1)}
+    fixed, along_x, a, b = edges[support]
+    if rail_z and not along_x:
+        a, b = rail_z
+    top = LH + (RAIL if support in outer_edges else 0.1)
+    spans = [(a, b)] if skip is None or along_x else [(a, skip[0]), (skip[1], b)]
+    for (p, q) in spans:
+        n_p = max(1, int(math.ceil(abs(q - p) / POST_SPAN)))
+        for k in range(n_p + 1):
+            v = p + (q - p) * k / n_p
             if along_x:
-                rail(a, b, fixed, fixed, LH + RAIL)
-            else:                                          # butting against the rails along x at the corners
-                rail(fixed, fixed, a + 0.03, b - 0.03, LH + RAIL)
+                post(v, fixed, top)
+                transom(v, v, z0, z1, LH)
+            else:
+                post(fixed, v, top)
+                transom(x0, x1, v, v, LH)
+    for side in outer_edges:
+        f, ax, ra, rb = edges[side]
+        if rail_z and not ax:
+            ra, rb = rail_z
+        if side != support:                                # uprights at the rail's ends
+            for v in (ra, rb):
+                post(v, f, LH + RAIL) if ax else post(f, v, LH + RAIL)
+        if ax:
+            rail(ra, rb, f, f, LH + RAIL)
+        else:                                              # butting against the rails along x at the corners
+            rail(f, f, ra + 0.03, rb - 0.03, LH + RAIL)
 
 
 for s in (1, -1):
@@ -1007,13 +1010,13 @@ for s in (1, -1):
     flights.append((acc, [False] * 4, t_acc))
     sx_out = "+x" if s > 0 else "-x"
     sx_in = "-x" if s > 0 else "+x"
-    lane(xi, xo, z_lane0, zf1, (sx_out,), rail_z=(z_lane0, zf0))                  # nave
+    lane(xi, xo, z_lane0, zf1, (sx_out,), sx_out, rail_z=(z_lane0, zf0))          # nave
     x_face = XE0 if s > 0 else x_north_face
-    lane(xo, s * x_face, zf0, zf1, ("-z",))                                       # transept west wall
-    lane(s * XE0, s * XE1, zf0 if s > 0 else z_north_end, ze1, (sx_out, "+z", "-z"), skip=PORTAL)  # transept end
-    lane(xo, s * XE0, ze0, ze1, ("+z",))                                          # transept east wall
-    lane(xi, xo, ze0, za1, (sx_out, "+z"), rail_z=(ze1, za1))                     # choir and apse side
-lane(-L_IN, L_IN, za0, za1, ("+z",))                                              # east of the apse
+    lane(xo, s * x_face, zf0, zf1, ("-z",), "-z")                                 # transept west wall
+    lane(s * XE0, s * XE1, zf0 if s > 0 else z_north_end, ze1, (sx_out, "+z", "-z"), sx_out)  # transept end
+    lane(xo, s * XE0, ze0, ze1, ("+z",), "+z")                                    # transept east wall
+    lane(xi, xo, ze0, za1, (sx_out, "+z"), sx_out, rail_z=(ze1, za1))             # choir and apse side
+lane(-L_IN, L_IN, za0, za1, ("+z",), "+z")                                        # east of the apse
 
 # Stair flights: a block under a first step near the ground, a stringer under both edges of every flight
 for st_steps, along_x, tread in flights:
