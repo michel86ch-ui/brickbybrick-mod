@@ -1018,6 +1018,29 @@ for s in (1, -1):
     lane(xi, xo, ze0, za1, (sx_out, "+z"), sx_out, rail_z=(ze1, za1))             # choir and apse side
 lane(-L_IN, L_IN, za0, za1, ("+z",), "+z")                                        # east of the apse
 
+# Inside: a narrow stair tower in the north transept arm and a platform over the whole crossing, below the roofs
+# that cross there (the crossing roof is reached from below). The tower keeps 0.1 m off the crossing piers and the
+# transept walls; its bottom landing lies one cell above the floor (no face in the plinth's top), its top landing
+# meets the platform. Nave and crossing stay free to walk through.
+MID_I = 1.12                                               # 2 steps per side, 2.52 m per turn
+U_IN = 37                                                  # platform 7.77 m: head below the wall tops (9.87 m), the
+                                                           # crossing roof (10 to 11.4 m) within reach
+cx_i = -(HALF_N + 1) * CELL - 0.06 - (MID_I + W / 2)       # +x uprights clear of the crossing piers
+cz_i = czm
+I_CORNERS = [(1, 1), (-1, 1), (-1, -1), (1, -1)]
+stair(cx_i, cz_i, MID_I, I_CORNERS, 0, U_IN, c_start=0, u_start=1)
+y_in = U_IN * STEP_RISE
+tower_frame(cx_i, cz_i, MID_I, y_in + RAIL, skip_sides=("+x",))         # entrance and platform on the crossing side
+xi0, xi1 = cx_i + MID_I + W / 2, (HALF_N - 1) * CELL - 0.09    # up to 0.09 m from the wall on the south side
+zi0, zi1 = cz_i - (MID_I + W / 2), cz_i + (MID_I + W / 2)
+deck(xi0, xi1, zi0, zi1, y_in)
+transom(xi1, xi1, zi0, zi1, y_in)
+for zz in (zi0, zi1):
+    post(xi1, zz, y_in + RAIL)
+    rail(xi0, xi1, zz, zz, y_in + RAIL)
+rail(xi1, xi1, zi0 + 0.03, zi1 - 0.03, y_in + RAIL)                     # butting, not crossing
+rail(xi0, xi0, zi0 + 0.03, cz_i + MID_I - W / 2, y_in + RAIL)          # over the stairwell, beside the top landing
+
 # Stair flights: a block under a first step near the ground, a stringer under both edges of every flight
 for st_steps, along_x, tread in flights:
     if not st_steps:
