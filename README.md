@@ -16,7 +16,7 @@ Overview page: **[michel86ch-ui.github.io/brickbybrick-mod](https://michel86ch-u
 |---|---|---|
 | **Notre-Dame**: 26,462 bricks in five construction sites, with a walkable scaffold | [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/) · [screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/) | [Extra Buildings 1.0.0](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest) |
 | Test buildings: garage (191 bricks), round tower (311 bricks) | pictures below | in the same ZIP |
-| **Taj Mahal**: about 40,000 bricks | in the works | coming |
+| **Taj Mahal**: about 40,000 bricks | [screenshot](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/taj-mahal-1.jpg) · in the works | coming |
 
 | Mod | What it does | Download |
 |---|---|---|
