@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
@@ -38,6 +39,14 @@ namespace ExtraBuildings
         internal static ConfigEntry<float> OriginZ;
         internal static ConfigEntry<float> Yaw;
         internal static ConfigEntry<KeyboardShortcut> MoveKey;
+        internal static ConfigEntry<string> ModWorlds;
+
+        /// <summary>The buildings the main menu offers: each in its own world, at its own place in the town.</summary>
+        private static readonly (string Name, string World, string Blueprint, float X, float Z, float Rotation)[] Presets =
+        {
+            ("Notre-Dame", "singleplayer-4", "notredame.json", 3.5f, 0.4f, 180f),
+            ("Taj Mahal", "singleplayer-3", "tajmahal.json", 1.5f, 2.0f, 180f),
+        };
 
         private static string toast;
         private static float toastUntil;
@@ -50,7 +59,7 @@ namespace ExtraBuildings
             RemoveVanilla = Config.Bind("General", "RemoveVanillaBuildings", true,
                 "Mod map only: remove the seven original buildings and their bricks, so the town is free for the extra buildings.");
             Showcase = Config.Bind("General", "Showcase", false,
-                "Mod map only: show the blueprint as a finished building (walkable, with plinth, without scaffold) instead of " +
+                "Mod map only: show the blueprint as a finished building (walkable, with plinth and ramps, without scaffold) instead of " +
                 "construction sites, to check a design. The mod world keeps no building progress while this is on.");
             ModMapActive = Config.Bind("General", "ModMapEnabled", false,
                 "true = the game starts as mod map: extra buildings are injected and every world choice opens the mod world. " +
@@ -62,7 +71,11 @@ namespace ExtraBuildings
                 "Mod map only: unlock the mobile scaffold in the mod world (with the 10 skill points of a finished building). " +
                 "The game unlocks it only when the town's house is finished, and the mod map has no house.");
             TargetSlot = Config.Bind("General", "World", "singleplayer-4",
-                "World slot of the mod map (singleplayer-1 to singleplayer-4). Other worlds stay unchanged.");
+                "World slot of the mod map (singleplayer-1 to singleplayer-4). Other worlds stay unchanged. The main menu " +
+                "buttons set it (Notre-Dame: singleplayer-4, Taj Mahal: singleplayer-3).");
+            ModWorlds = Config.Bind("General", "ModWorlds", "singleplayer-4",
+                "Worlds opened as mod map so far (kept by the mod). They are locked in normal sessions, because without the " +
+                "mod the game would drop their extra buildings' bricks.");
             ModMapSession = ModMapActive.Value;
             BlueprintFile = Config.Bind("General", "Blueprint", "garage.json", "Blueprint file in the plugin folder.");
             OriginX = Config.Bind("Site", "X", 0f, "World X coordinate of the footprint center (0 = town center).");
@@ -111,6 +124,38 @@ namespace ExtraBuildings
             toastUntil = Time.unscaledTime + seconds;
         }
 
+        internal static bool IsModWorld(string slot) =>
+            ModWorlds.Value.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries).Contains(slot, StringComparer.Ordinal);
+
+        internal static void RememberModWorld(string slot)
+        {
+            if (!IsModWorld(slot))
+            {
+                ModWorlds.Value = string.IsNullOrWhiteSpace(ModWorlds.Value) ? slot : ModWorlds.Value + "," + slot;
+                instance.Config.Save();
+                Log.LogInfo($"'{slot}' is now a mod-map world (locked in normal sessions).");
+            }
+        }
+
+        /// <summary>Does the game have a save in this world slot? (SteamCloud\steam id\host-world_slot.es3, measured)</summary>
+        internal static bool SaveExists(string slot)
+        {
+            try
+            {
+                string root = Path.Combine(Application.persistentDataPath, "SteamCloud");
+                return Directory.Exists(root) && Directory.GetFiles(root, "host-world_" + slot + ".es3", SearchOption.AllDirectories).Length > 0;
+            }
+            catch (Exception e)
+            {
+                Log.LogWarning("Could not look for saves: " + e.Message);
+                return false;
+            }
+        }
+
+        private static string ActiveName =>
+            Presets.FirstOrDefault(p => string.Equals(p.Blueprint, BlueprintFile.Value, StringComparison.OrdinalIgnoreCase)).Name
+            ?? Path.GetFileNameWithoutExtension(BlueprintFile.Value);
+
         /// <summary>Main menu = no network session running (the town scene is loaded behind the menu).</summary>
         private static bool InMainMenu()
         {
@@ -118,8 +163,9 @@ namespace ExtraBuildings
             return nm != null && !nm.IsListening && !nm.ShutdownInProgress;
         }
 
-        /// <summary>Switch the mode and restart the game through Steam (the town scene is only loaded once per game start).</summary>
-        private static void RestartInto(bool modMap)
+        /// <summary>Switch the mode (and the building) and restart the game through Steam (the town scene is only loaded
+        /// once per game start).</summary>
+        private static void RestartInto(bool modMap, int preset = -1)
         {
             if (restarting)
             {
@@ -127,6 +173,15 @@ namespace ExtraBuildings
             }
             restarting = true;
             ModMapActive.Value = modMap;
+            if (preset >= 0)
+            {
+                var p = Presets[preset];
+                TargetSlot.Value = p.World;
+                BlueprintFile.Value = p.Blueprint;
+                OriginX.Value = p.X;
+                OriginZ.Value = p.Z;
+                Yaw.Value = p.Rotation;
+            }
             instance.Config.Save();
             int pid = Process.GetCurrentProcess().Id;
             string ps = $"Wait-Process -Id {pid} -Timeout 90 -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; Start-Process 'steam://rungameid/{SteamAppId}'";
@@ -138,7 +193,7 @@ namespace ExtraBuildings
                     CreateNoWindow = true,
                 });
                 Log.LogInfo($"Restarting into {(modMap ? "mod map" : "normal worlds")}.");
-                Toast(modMap ? "Restarting as mod map..." : "Restarting with the normal worlds...", 10f);
+                Toast(modMap ? $"Restarting as mod map: {ActiveName}..." : "Restarting with the normal worlds...", 10f);
                 Application.Quit();
             }
             catch (Exception e)
@@ -154,16 +209,30 @@ namespace ExtraBuildings
             if (InMainMenu())
             {
                 var btn = new GUIStyle(GUI.skin.button) { fontSize = 17, alignment = TextAnchor.MiddleCenter };
-                string label = ModMapSession ? "Back to normal worlds" : "Start Mod Map";
-                if (GUI.Button(new Rect(12f, 12f, 230f, 38f), label, btn))
+                if (ModMapSession)
                 {
-                    RestartInto(!ModMapSession);
+                    if (GUI.Button(new Rect(12f, 12f, 270f, 38f), "Back to normal worlds", btn))
+                    {
+                        RestartInto(false);
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < Presets.Length; i++)
+                    {
+                        string world = Presets[i].World.Substring(Presets[i].World.LastIndexOf('-') + 1);
+                        if (GUI.Button(new Rect(12f, 12f + i * 44f, 270f, 38f), $"Start {Presets[i].Name} (world {world})", btn))
+                        {
+                            RestartInto(true, i);
+                        }
+                    }
                 }
             }
             else if (ModMapSession)
             {
                 var badge = new GUIStyle(GUI.skin.box) { fontSize = 16, alignment = TextAnchor.MiddleCenter };
-                GUI.Box(new Rect(12f, 12f, Showcase.Value ? 230f : 150f, 30f), Showcase.Value ? "MOD-MAP · SHOWCASE" : "MOD-MAP", badge);
+                string text = "MOD-MAP · " + ActiveName + (Showcase.Value ? " · SHOWCASE" : "");
+                GUI.Box(new Rect(12f, 12f, 12f + text.Length * 9f, 30f), text, badge);
             }
             if (toast == null || Time.unscaledTime > toastUntil)
             {

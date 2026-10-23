@@ -4,6 +4,7 @@ using System.Reflection;
 using HarmonyLib;
 using MultiplayerTemplate.Bootstrap;
 using MultiplayerTemplate.Construction;
+using MultiplayerTemplate.Core.Items;
 using MultiplayerTemplate.Game.Scenes;
 using MultiplayerTemplate.Player;
 using MultiplayerTemplate.Progression;
@@ -13,8 +14,9 @@ namespace ExtraBuildings
 {
     /// <summary>
     /// Guards the world choice. The gameplay scene is loaded only once per game start, so the mode applies to the whole session:
-    /// mod-map session -> every choice opens the mod world. Normal session -> the mod world is locked, because without the mod
-    /// the game would drop the extra buildings' bricks from the save when loading it.
+    /// mod-map session -> every choice opens the mod world; a world that already holds a normal save is refused, because the
+    /// mod map would drop the original buildings' bricks from it. Normal session -> every world ever opened as mod map is
+    /// locked, because without the mod the game would drop the extra buildings' bricks from the save when loading it.
     /// </summary>
     [HarmonyPatch(typeof(AppBootstrap), nameof(AppBootstrap.ConfigureHostSaveSlot))]
     internal static class SlotGuardPatch
@@ -22,21 +24,101 @@ namespace ExtraBuildings
         private static void Prefix(ref string slotId)
         {
             string target = Plugin.TargetSlot.Value;
-            bool isTarget = string.Equals(slotId, target, StringComparison.Ordinal);
             if (Plugin.ModMapSession)
             {
-                if (!isTarget)
+                if (!string.Equals(slotId, target, StringComparison.Ordinal))
                 {
                     Plugin.Log.LogInfo($"Mod-map session: world choice '{slotId}' becomes '{target}'.");
                     slotId = target;
                 }
+                if (!Plugin.IsModWorld(target) && Plugin.SaveExists(target))
+                {
+                    Plugin.Toast($"'{target}' holds a normal save. The mod map needs an empty world there: delete or move that save first.", 12f);
+                    Plugin.Log.LogWarning($"Mod-map session: '{target}' holds a normal save and is not opened as mod map.");
+                    throw new InvalidOperationException($"'{target}' holds a normal save and cannot be opened as mod map.");
+                }
+                Plugin.RememberModWorld(target);
                 return;
             }
-            if (isTarget)
+            if (Plugin.IsModWorld(slotId) || string.Equals(slotId, target, StringComparison.Ordinal))
             {
-                Plugin.Toast($"'{target}' is the mod map. Please start the game as mod map.", 10f);
-                Plugin.Log.LogWarning($"Normal session: '{target}' is the mod map and locked here.");
-                throw new InvalidOperationException($"'{target}' is the mod map and can only be loaded in a mod-map session.");
+                Plugin.Toast($"'{slotId}' is a mod-map world. Please start it from the main menu as mod map.", 10f);
+                Plugin.Log.LogWarning($"Normal session: '{slotId}' is a mod-map world and locked here.");
+                throw new InvalidOperationException($"'{slotId}' is a mod-map world and can only be loaded in a mod-map session.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Prerequisites across construction sites. The game keeps a brick's prerequisites inside its own site, but a building
+    /// cut into storeys has bricks resting on bricks of the site below (blueprint field "xreq"). Each site's state is
+    /// registered with its slots when it is created; CanPlace of a slot with such bricks below also needs them placed.
+    /// Applies on the host and on clients alike, so the holograms and the server agree.
+    /// </summary>
+    internal static class CrossSitePrerequisites
+    {
+        private static readonly Dictionary<PlacementSlotId, PlacementSlotId[]> Required = new Dictionary<PlacementSlotId, PlacementSlotId[]>();
+        private static readonly Dictionary<PlacementSlotId, ConstructionSiteState> StateOf = new Dictionary<PlacementSlotId, ConstructionSiteState>();
+        private static readonly AccessTools.FieldRef<ConstructionSiteState, Dictionary<PlacementSlotId, ItemInstanceId>> Occupants =
+            AccessTools.FieldRefAccess<ConstructionSiteState, Dictionary<PlacementSlotId, ItemInstanceId>>("occupants");
+
+        internal static void Clear()
+        {
+            Required.Clear();
+            StateOf.Clear();
+        }
+
+        internal static void Add(PlacementSlotId slot, PlacementSlotId[] below) => Required[slot] = below;
+
+        internal static void Register(ConstructionSiteState state, ConstructionSlotSpec[] specs)
+        {
+            if (Required.Count == 0)
+            {
+                return;
+            }
+            foreach (ConstructionSlotSpec spec in specs)
+            {
+                if (spec.SlotId.Value > Injector.IdBase)
+                {
+                    StateOf[spec.SlotId] = state;
+                }
+            }
+        }
+
+        internal static bool Allows(PlacementSlotId slot)
+        {
+            if (!Required.TryGetValue(slot, out PlacementSlotId[] below))
+            {
+                return true;
+            }
+            foreach (PlacementSlotId b in below)
+            {
+                if (!StateOf.TryGetValue(b, out ConstructionSiteState state) || !Occupants(state).ContainsKey(b))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(ConstructionSiteState), MethodType.Constructor, typeof(ConstructionSlotSpec[]), typeof(int))]
+    internal static class SiteStateCreatedPatch
+    {
+        private static void Postfix(ConstructionSiteState __instance, ConstructionSlotSpec[] specs)
+        {
+            CrossSitePrerequisites.Register(__instance, specs);
+        }
+    }
+
+    [HarmonyPatch(typeof(ConstructionSiteState), nameof(ConstructionSiteState.CanPlace))]
+    internal static class SiteStateCanPlacePatch
+    {
+        private static void Postfix(PlacementSlotId slotId, ref bool __result)
+        {
+            if (__result && !CrossSitePrerequisites.Allows(slotId))
+            {
+                __result = false;
             }
         }
     }

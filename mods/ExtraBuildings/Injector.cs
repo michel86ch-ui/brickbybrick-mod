@@ -124,6 +124,7 @@ namespace ExtraBuildings
                 // The new site goes into the template's installer (initialization, completion, sync, rewards run there)
                 ConstructionSceneInstaller csi = installers.First(c => ((ConstructionSite[])CsiSites.GetValue(c)).Contains(template));
                 var sites = (ConstructionSite[])CsiSites.GetValue(csi);
+                ClearArea(bp, scene);
                 if (Plugin.Showcase.Value)
                 {
                     BuildShowcase(bp, gsi, scene, allSites, installers, template, bws, catalog, origBricks, visuals, recByDef);
@@ -175,16 +176,32 @@ namespace ExtraBuildings
                     min = Vector3.Min(min, p);
                     max = Vector3.Max(max, p);
                 }
-                foreach (float[] b in bp.scaffold ?? new float[0][])
+                foreach (float[] b in (bp.scaffold ?? new float[0][]).Concat(bp.tempScaffold ?? new float[0][]))
                 {
                     min = Vector3.Min(min, new Vector3(b[0] - b[3] / 2f, b[1] - b[4] / 2f, b[2] - b[5] / 2f));
                     max = Vector3.Max(max, new Vector3(b[0] + b[3] / 2f, b[1] + b[4] / 2f, b[2] + b[5] / 2f));
                 }
                 var built = new ConstructionSite[parts.Length];
                 var placementSlots = new PlacementSlot[n];
+                GameObject tempScaffold = null;
                 for (int p = 0; p < parts.Length; p++)
                 {
-                    built[p] = BuildPart(bp, parts[p], p, partOfSection, clones[p], origin, rot, slotByDef, recByDef, visuals, min, max, placementSlots);
+                    built[p] = BuildPart(bp, parts[p], p, partOfSection, clones[p], origin, rot, slotByDef, recByDef, visuals, min, max,
+                        placementSlots, out GameObject temp);
+                    if (temp != null)
+                    {
+                        tempScaffold = temp;
+                    }
+                }
+                CrossSitePrerequisites.Clear();
+                for (int i = 0; i < n; i++)
+                {
+                    int[] xreq = bp.bricks[i].xreq;
+                    if (xreq != null && xreq.Length > 0)
+                    {
+                        CrossSitePrerequisites.Add(new PlacementSlotId(IdBase + 1u + (uint)i),
+                            xreq.Select(j => new PlacementSlotId(IdBase + 1u + (uint)j)).ToArray());
+                    }
                 }
                 PartFocus.Clear();
                 if (parts.Length > 1)
@@ -259,6 +276,10 @@ namespace ExtraBuildings
                     clone.transform.SetParent(null, true);
                     SceneManager.MoveGameObjectToScene(clone, scene);
                 }
+                if (tempScaffold != null)
+                {
+                    TemporaryScaffold.Attach(tempScaffold, built);
+                }
                 Object.Destroy(holder);
                 holder = null;
                 Plugin.Log.LogInfo($"Site '{bp.siteId}' injected: {parts.Length} construction site(s), {n} slots in {bp.sections.Length} sections, " +
@@ -280,12 +301,14 @@ namespace ExtraBuildings
         /// <summary>
         /// Turns one clone of the template into the construction site of a blueprint part: its sections with their own
         /// final meshes, its slots (prerequisites only inside the part), area, blueprint board and baked topology.
-        /// The first part also carries the plinth and the scaffold.
+        /// The first part also carries the plinth and the scaffold (tempScaffold: the part that goes once the building is
+        /// complete, or null).
         /// </summary>
         private static ConstructionSite BuildPart(Blueprint bp, PartSpec part, int partIndex, int[] partOfSection, GameObject clone,
             Vector3 origin, Quaternion rot, Dictionary<string, ConstructionSlot> slotByDef, Dictionary<string, BrickRecord> recByDef,
-            BrickVisual[] visuals, Vector3 min, Vector3 max, PlacementSlot[] placementSlots)
+            BrickVisual[] visuals, Vector3 min, Vector3 max, PlacementSlot[] placementSlots, out GameObject tempScaffold)
         {
+            tempScaffold = null;
             int[] mine = Enumerable.Range(0, bp.bricks.Length).Where(i => partOfSection[bp.bricks[i].s] == partIndex).ToArray();
             int nSec = part.sections.Length;
             if (mine.Length > MaxSlotsPerSite || nSec > MaxSectionsPerSite)
@@ -466,7 +489,8 @@ namespace ExtraBuildings
             if (partIndex == 0)
             {
                 BuildFoundation(bp, clone.transform, recByDef, visuals, groundLayer);
-                BuildScaffold(bp, clone.transform, groundLayer);
+                BuildScaffold(bp.scaffold, clone.transform, groundLayer, "Scaffold");
+                tempScaffold = BuildScaffold(bp.tempScaffold, clone.transform, groundLayer, "ScaffoldTemporary");
             }
 
             // Blueprint board: our own 3D model instead of the house (the board requires a single mesh without children)
@@ -599,6 +623,40 @@ namespace ExtraBuildings
             return go;
         }
 
+        /// <summary>The town's fences and small props (material M_Map_04, measured in the scene data) carry this material.</summary>
+        private const string FenceMaterial = "M_Map_04";
+
+        /// <summary>
+        /// Room for a large building: in the blueprint's clear area (local rectangle) the scene objects with the fence
+        /// material and a collider are switched off. Only in a mod-map session; the scene is loaded anew at every game start.
+        /// </summary>
+        private static void ClearArea(Blueprint bp, Scene scene)
+        {
+            if (bp.clearArea == null || bp.clearArea.Length != 4)
+            {
+                return;
+            }
+            Quaternion inv = Quaternion.Inverse(Quaternion.Euler(0f, Plugin.Yaw.Value, 0f));
+            var origin = new Vector3(Plugin.OriginX.Value, 0f, Plugin.OriginZ.Value);
+            int hidden = 0;
+            foreach (MeshRenderer r in Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            {
+                if (r.gameObject.scene != scene || r.sharedMaterial == null || r.GetComponent<Collider>() == null
+                    || !r.sharedMaterial.name.StartsWith(FenceMaterial, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+                Vector3 local = inv * (r.bounds.center - origin);
+                if (local.x < bp.clearArea[0] || local.x > bp.clearArea[2] || local.z < bp.clearArea[1] || local.z > bp.clearArea[3])
+                {
+                    continue;
+                }
+                r.gameObject.SetActive(false);
+                hidden++;
+            }
+            Plugin.Log.LogInfo($"Clear area: {hidden} fences and props hidden.");
+        }
+
         /// <summary>
         /// Plinth like the original sites: bricks as visuals only (one mesh), plus walkable colliders.
         /// The blueprint's slots are already placed at plinth height.
@@ -622,7 +680,8 @@ namespace ExtraBuildings
 
         /// <summary>
         /// Showcase: the blueprint as a finished building, one mesh with a walkable MeshCollider per section, with plinth
-        /// and brick supply, but without construction sites and without the scaffold (a finished building has none).
+        /// and brick supply, but without construction sites and without the scaffold (a finished building has none);
+        /// ramps stay, they are the way up onto a high plinth.
         /// For checking a design in the game.
         /// </summary>
         private static void BuildShowcase(Blueprint bp, GameSceneInstaller gsi, Scene scene, ConstructionSite[] allSites,
@@ -646,6 +705,7 @@ namespace ExtraBuildings
             SceneManager.MoveGameObjectToScene(root, scene);
             root.transform.SetPositionAndRotation(origin, rot);
             BuildFoundation(bp, root.transform, recByDef, visuals, groundLayer);
+            BuildScaffold(Ramps(bp.scaffold), root.transform, groundLayer, "Ramps");     // the way up onto a high plinth stays
             int solid = 0;
             for (int s = 0; s < bp.sections.Length; s++)
             {
@@ -733,16 +793,20 @@ namespace ExtraBuildings
         /// <summary>Colour of uprights, rails and braces: plain aluminium instead of the game's red scaffold paint.</summary>
         private static readonly Color Aluminium = new Color(0.76f, 0.78f, 0.80f);
 
+        /// <summary>Ramps of a scaffold: walkable parts tilted about x or z (turned stairs are only turned about y).</summary>
+        private static float[][] Ramps(float[][] boxes) =>
+            (boxes ?? new float[0][]).Where(b => b.Length >= 10 && b[9] > 0.5f && (b[6] != 0f || b[8] != 0f)).ToArray();
+
         /// <summary>
         /// Scaffold of the blueprint: planks as one mesh with the game's scaffolding material, uprights, rails and braces
         /// as a second mesh in aluminium, plus a walkable BoxCollider per upright part (rotated parts such as braces are
-        /// visuals only).
+        /// visuals only), all under one container object (returned; null without parts).
         /// </summary>
-        private static void BuildScaffold(Blueprint bp, Transform root, int groundLayer)
+        private static GameObject BuildScaffold(float[][] boxes, Transform root, int groundLayer, string name)
         {
-            if (bp.scaffold == null || bp.scaffold.Length == 0)
+            if (boxes == null || boxes.Length == 0)
             {
-                return;
+                return null;
             }
             Material mat = FindMaterial("M_Scaffolding") ?? FindMaterial("M_Pallet");
             GameObject primitive = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -753,12 +817,12 @@ namespace ExtraBuildings
             // the stripe keeps its normal map). Without that the boxes show the whole atlas.
             Mesh plankMesh = AtlasCube(cube, new Rect(0.35f, 0.335f, 0.12f, 0.09f));
             Mesh poleMesh = AtlasCube(cube, new Rect(0.555f, 0.10f, 0.055f, 0.75f));
-            var container = new GameObject("Scaffold");
+            var container = new GameObject(name);
             container.transform.SetParent(root, false);
-            var planks = new List<CombineInstance>(bp.scaffold.Length);
-            var poles = new List<CombineInstance>(bp.scaffold.Length);
+            var planks = new List<CombineInstance>(boxes.Length);
+            var poles = new List<CombineInstance>(boxes.Length);
             int solid = 0;
-            foreach (float[] b in bp.scaffold)
+            foreach (float[] b in boxes)
             {
                 var c = new Vector3(b[0], b[1], b[2]);
                 var s = new Vector3(b[3], b[4], b[5]);
@@ -800,7 +864,8 @@ namespace ExtraBuildings
             ScaffoldMesh(container.transform, "ScaffoldPlanks", planks, mat);
             ScaffoldMesh(container.transform, "ScaffoldMetal", poles, metal);
             string matName = mat != null ? mat.name : "(none)";
-            Plugin.Log.LogInfo($"Scaffold: {bp.scaffold.Length} parts ({planks.Count} planks, {poles.Count} aluminium), {solid} colliders, material {matName}.");
+            Plugin.Log.LogInfo($"{name}: {boxes.Length} parts ({planks.Count} planks, {poles.Count} aluminium), {solid} colliders, material {matName}.");
+            return container;
         }
 
         private static void ScaffoldMesh(Transform parent, string name, List<CombineInstance> parts, Material material)

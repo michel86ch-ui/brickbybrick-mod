@@ -24,15 +24,25 @@ namespace ExtraBuildings
         /// <summary>
         /// Scaffold parts (local, y above ground): [cx, cy, cz, sx, sy, sz] = walkable box with a collider;
         /// [cx, cy, cz, sx, sy, sz, pitch, yaw, roll] = rotated part (braces), visuals only; with a tenth value 1 the
-        /// rotated part is walkable too (ramps).
+        /// rotated part is walkable too (ramps, turned stairs).
         /// </summary>
         public float[][] scaffold;
+        /// <summary>
+        /// Optional scaffold in the same format that stands only while the building is being built: it goes once every
+        /// construction site of the building is complete (the "scaffold" parts stay, e.g. ramps onto a high plinth).
+        /// </summary>
+        public float[][] tempScaffold;
         public BrickSpec[] bricks;
         /// <summary>
         /// Optional: the building as several construction sites (the game allows at most 8192 slots and 256 sections
         /// per site). Without parts the whole blueprint is one site.
         /// </summary>
         public PartSpec[] parts;
+        /// <summary>
+        /// Optional local rectangle [x0, z0, x1, z1]: in a mod-map session the town's fences and small props there are
+        /// hidden (scene objects with the material M_Map_04 and a collider), to make room for a large building.
+        /// </summary>
+        public float[] clearArea;
 
         internal PartSpec[] Parts => parts != null && parts.Length > 0 ? parts : new[]
         {
@@ -54,7 +64,7 @@ namespace ExtraBuildings
                 {
                     throw new InvalidDataException($"Blueprint brick {i} is invalid.");
                 }
-                foreach (int r in b.req ?? new int[0])
+                foreach (int r in (b.req ?? new int[0]).Concat(b.xreq ?? new int[0]))
                 {
                     if (r < 0 || r >= bp.bricks.Length || r == i)
                     {
@@ -144,6 +154,11 @@ namespace ExtraBuildings
         /// <summary>0 = all prerequisites (All), 1 = any one is enough (Any).</summary>
         public int mode;
         public int[] req;
+        /// <summary>
+        /// Optional: bricks of other parts this brick rests on. The game keeps prerequisites inside one site, so the mod
+        /// checks these itself (CrossSitePrerequisites): the brick can be set only once all of them are in place.
+        /// </summary>
+        public int[] xreq;
 
         internal Quaternion Rotation => Quaternion.Euler(pitch, yaw, 0f);
     }
