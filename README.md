@@ -8,6 +8,26 @@ Test buildings: a **garage with 191 bricks** and a **round tower with 311 bricks
 
 > Unofficial fan mod, not made by the game's developers. This repository contains no game files.
 
+## All mods and maps
+
+Overview page: **[michel86ch-ui.github.io/brickbybrick-mod](https://michel86ch-ui.github.io/brickbybrick-mod/)**
+
+| Map | More | Download |
+|---|---|---|
+| **Notre-Dame**: 26,462 bricks in five construction sites, with a walkable scaffold | [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/) · [screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/) | [Extra Buildings 1.0.0](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest) |
+| Test buildings: garage (191 bricks), round tower (311 bricks) | pictures below | in the same ZIP |
+| **Taj Mahal**: about 40,000 bricks | in the works | coming |
+
+| Mod | What it does | Download |
+|---|---|---|
+| **[Extra Buildings](https://github.com/michel86ch-ui/brickbybrick-mod)** (this repository) | the maps above, each in a world of its own | [BrickByBrick-ExtraBuildings-1.0.0.zip](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest) |
+| **[SkillPoints](https://github.com/michel86ch-ui/brickbybrick-mod-skillpoints)** | F10 in a world you host: +10 skill points | [skillpoints-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-skillpoints/raw/main/skillpoints-mod.zip) |
+| **[SkillModify](https://github.com/michel86ch-ui/brickbybrick-mod-skillmodify)** | the last skill levels carry 50 bricks and pull 50 with the magnet | [skillmodify-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-skillmodify/raw/main/skillmodify-mod.zip) |
+| **[Ladder](https://github.com/michel86ch-ui/brickbybrick-mod-ladder)** | an extension ladder to set up against a wall, climb and step off at the top | [ladder-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-ladder/raw/main/ladder-mod.zip) |
+
+Every ZIP contains the same unmodified BepInEx 5.4.23.5, so the mods work together: unzip one after the other into the
+game folder and overwrite.
+
 ![Garage under construction next to the bakery](docs/modmapBrickByBrick.png)
 
 ![Construction complete: garage with build replay](docs/modmapBrickByBrick2.png)
