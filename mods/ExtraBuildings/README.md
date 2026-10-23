@@ -1,4 +1,4 @@
-# ExtraBuildings 1.0.0
+# ExtraBuildings 1.1.0
 
 Extra construction sites from a blueprint (JSON). Active only in a **mod-map session** (`ModMapEnabled = true`);
 every world choice then opens the mod world (default `singleplayer-4`). In a normal session the mod does nothing and
@@ -23,16 +23,19 @@ locks the mod world. A button top left in the main menu switches the mode and re
 9. Only then: swap the catalog, append slots and sites to the game's lists. On any error the world loads without them.
    With `RemoveVanillaBuildings` the seven original sites are hidden and their slots, bricks and sites leave the
    game's lists; the catalog then holds only the blueprint's bricks.
-10. `AppBootstrap.ConfigureHostSaveSlot`: mod-map session -> every choice becomes the mod world; normal session -> mod world locked.
+10. `AppBootstrap.ConfigureHostSaveSlot`: mod-map session -> every choice becomes the building's world (Taj Mahal
+    slot 3, Notre-Dame slot 4); a slot that holds a normal save is refused, every slot opened as mod map is remembered
+    (`ModWorlds`). Normal session -> all remembered mod worlds are locked.
 11. `ConstructionSceneInstaller.OnSceneEnterAsync`: installers left without a site are skipped (the game's
     `ConstructionStateNetworkSynchronizer` requires 1 to 32 sites).
 12. `ConstructionSite.ObserveLocalPlayer`: the parts of a building share one area, so only the part whose bricks are
     nearest to the player shows its progress panel. Placing is not affected (`PlacementSlot.IsPlayerInside` checks
     the area collider itself).
-13. Main-menu button: saves `ModMapEnabled`, starts a hidden PowerShell that waits for the game to exit and then
-    opens `steam://rungameid/5228920`, and quits the game.
+13. Main-menu buttons, one per building ("Start Notre-Dame (world 4)", "Start Taj Mahal (world 3)"): set world,
+    blueprint and site, save `ModMapEnabled`, start a hidden PowerShell that waits for the game to exit and then opens
+    `steam://rungameid/5228920`, and quit the game. In a mod-map session one button leads back to the normal worlds.
 14. `Showcase = true`: instead of construction sites the blueprint stands finished, one mesh with a walkable
-    `MeshCollider` per section, on its plinth, without scaffold. The original sites are hidden and every installer is
+    `MeshCollider` per section, on its plinth, without scaffold (ramps stay). The original sites are hidden and every installer is
     left empty, so the world keeps no building progress. For checking a design in the game.
 15. Start skill points: a mod world whose shared progression was never changed (`ProgressionService.Revision` 0, saved
     with the world) gets `StartSkillPoints` through the game's own `GrantCurrencyForDevelopment` (host only). The
@@ -41,6 +44,13 @@ locks the mod world. A button top left in the main menu switches the mode and re
     58 that a finished building opens), and the mod map has no house. With `UnlockScaffoldLift` the mod claims that
     completion reward (`construction-building` + `house`, with its 10 skill points) through the game's own
     `TryClaimCompletionReward` (host only), once per mod world.
+17. Prerequisites across construction sites (`xreq`): a building cut into storeys has bricks resting on bricks of the
+    site below. Each site's state registers its slots when created; a postfix on `ConstructionSiteState.CanPlace`
+    also requires those bricks, on the host and on clients alike.
+18. Clear area (`clearArea`): in a mod-map session the town's fences and small props (material `M_Map_04` with a
+    collider) inside the blueprint's rectangle are switched off, to make room for a large building.
+19. Temporary scaffold (`tempScaffold`): stands while the building is built; a watcher checks twice a second whether
+    every site of the building is complete (`ConstructionSite.State.IsComplete`) and then switches it off.
 
 ### Scaffold
 
@@ -58,8 +68,9 @@ rotation. Uprights have no collider, so the mobile scaffold can drive through be
 | General / StartSkillPoints | 20 | Mod map only: skill points a new mod world starts with (0 = like the base game) |
 | General / UnlockScaffoldLift | true | Mod map only: unlock the mobile scaffold (the game unlocks it with the town's house, which the mod map does not have) |
 | General / Showcase | false | Mod map only: the blueprint as a finished building instead of construction sites (no building progress) |
-| General / World | singleplayer-4 | World slot of the mod map |
-| General / Blueprint | garage.json | File in the plugin folder (`garage.json`, `roundtest.json`, `notredame.json`) |
+| General / World | singleplayer-4 | World slot of the mod map (set by the menu buttons: Taj Mahal slot 3, Notre-Dame slot 4) |
+| General / ModWorlds | singleplayer-4 | Slots opened as mod map so far (kept by the mod, locked in normal sessions) |
+| General / Blueprint | garage.json | File in the plugin folder (`garage.json`, `roundtest.json`, `notredame.json`, `tajmahal.json`) |
 | Site / X, Z | 0, 0 | Footprint center (town center); the Notre-Dame expects X 3.5, Z 0.4 |
 | Site / Rotation | 0 | Rotation in degrees; the Notre-Dame expects 180 (west front towards the spawn) |
 | Site / MoveKey | F9 | Move the site 4 m in front of you, door facing you; takes effect at the next game start |
@@ -165,6 +176,10 @@ upright, no plank lies without support, and no two visible parts share a face pl
   joints where an odd wall between two corners had its 1x1 in the middle, the red scaffold too dominant, a gap in a
   tower lane, stairs turning on their steps, the mobile scaffold unable to climb the plinth. The skill tree data
   showed that the mobile scaffold opens only with the town's house, which the mod map does not have.
+- 1.1.0 (beta, with the Taj Mahal 0.5): Taj Mahal in slot 3 next to the Notre-Dame in slot 4, a menu button per
+  building, prerequisites across sites, fences cleared, a scaffold that goes once the building is complete; Notre-Dame
+  with a stair tower inside. Seen in the showcase: size and place fine, fences gone, ramp missing (fixed: ramps stay
+  in the showcase). Building the Taj Mahal: being tested.
 - 1.0.0: all of that fixed: the 1x1 goes where the joints shift, aluminium scaffold with landings at every stair
   corner, mobile scaffold unlocked, up the ramps onto the plinth and through the uprights (no colliders), clerestory
   lanes, higher brick stacks, 73 instead of 200 uprights.
