@@ -38,6 +38,9 @@ namespace ExtraBuildings
         internal static ConfigEntry<float> OriginZ;
         internal static ConfigEntry<float> Yaw;
         internal static ConfigEntry<KeyboardShortcut> MoveKey;
+        internal static ConfigEntry<KeyboardShortcut> PlaceThroughKey;
+        /// <summary>Aim at brick slots behind placed bricks (switched with <see cref="PlaceThroughKey"/>, not saved).</summary>
+        internal static bool PlaceThrough;
 
         private static string toast;
         private static float toastUntil;
@@ -70,6 +73,9 @@ namespace ExtraBuildings
             Yaw = Config.Bind("Site", "Rotation", 0f, "Rotation in degrees.");
             MoveKey = Config.Bind("Site", "MoveKey", new KeyboardShortcut(KeyCode.F9),
                 "Moves the site 4 m in front of you, door facing you. Takes effect at the next game start.");
+            PlaceThroughKey = Config.Bind("Site", "PlaceThroughKey", new KeyboardShortcut(KeyCode.F7),
+                "Mod map only: switches aiming through placed bricks on and off, for brick slots hidden behind or under " +
+                "other bricks (e.g. the roof under the crossing). Off at every game start.");
             new Harmony(Guid).PatchAll(typeof(Plugin).Assembly);
             Log.LogInfo(ModMapSession
                 ? $"ExtraBuildings {Version}: MOD-MAP session, world '{TargetSlot.Value}', blueprint '{BlueprintFile.Value}'."
@@ -79,6 +85,14 @@ namespace ExtraBuildings
         private void Update()
         {
             ModWorldProgression.Tick();
+            if (ModMapSession && PlaceThroughKey.Value.IsDown())
+            {
+                PlaceThrough = !PlaceThrough;
+                Toast(PlaceThrough
+                    ? "Place through bricks: ON. Brick slots behind placed bricks can be aimed at."
+                    : "Place through bricks: OFF.");
+                Log.LogInfo("Place through bricks: " + (PlaceThrough ? "on" : "off"));
+            }
             if (!MoveKey.Value.IsDown())
             {
                 return;
@@ -163,7 +177,8 @@ namespace ExtraBuildings
             else if (ModMapSession)
             {
                 var badge = new GUIStyle(GUI.skin.box) { fontSize = 16, alignment = TextAnchor.MiddleCenter };
-                GUI.Box(new Rect(12f, 12f, Showcase.Value ? 230f : 150f, 30f), Showcase.Value ? "MOD-MAP · SHOWCASE" : "MOD-MAP", badge);
+                string text = Showcase.Value ? "MOD-MAP · SHOWCASE" : PlaceThrough ? "MOD-MAP · THROUGH BRICKS" : "MOD-MAP";
+                GUI.Box(new Rect(12f, 12f, Showcase.Value || PlaceThrough ? 260f : 150f, 30f), text, badge);
             }
             if (toast == null || Time.unscaledTime > toastUntil)
             {

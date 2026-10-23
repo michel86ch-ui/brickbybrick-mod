@@ -4,6 +4,7 @@ using System.Reflection;
 using HarmonyLib;
 using MultiplayerTemplate.Bootstrap;
 using MultiplayerTemplate.Construction;
+using MultiplayerTemplate.Game.Placement;
 using MultiplayerTemplate.Game.Scenes;
 using MultiplayerTemplate.Player;
 using MultiplayerTemplate.Progression;
@@ -157,6 +158,26 @@ namespace ExtraBuildings
                 Plugin.Log.LogDebug("ConstructionSceneInstaller.OnSceneEnterAsync done.");
             }
             return __exception;
+        }
+    }
+
+    /// <summary>
+    /// Place through bricks: the game only lets the player aim at a brick slot when no placed brick is hit closer along
+    /// the view (client side; the server checks slot, brick type, site area and reach, not the view). Where two roofs
+    /// overlap (the crossing) or a base lies under the drum, slots end up under bricks of another section. While
+    /// <see cref="Plugin.PlaceThrough"/> is on, every slot counts as visible.
+    /// </summary>
+    [HarmonyPatch(typeof(NetworkPlayerPlacementController), "IsPlacementHitVisible")]
+    internal static class PlacementVisibilityPatch
+    {
+        private static bool Prefix(float placementDistance, ref bool __result)
+        {
+            if (!Plugin.ModMapSession || !Plugin.PlaceThrough || !(placementDistance >= 0f) || float.IsInfinity(placementDistance))
+            {
+                return true;
+            }
+            __result = true;
+            return false;
         }
     }
 
