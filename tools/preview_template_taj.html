@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taj Mahal from Bricks</title>
+<meta name="description" content="3D preview of a simplified Taj Mahal made of about 40,000 bricks of the game Brick by Brick: brick list, construction sections, colours and scaffold of the mod building (beta 0.5).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: a blueprint board like the game's. Header with key figures, 3D view + brick list, then sections and comparison. */
+:root {
+  color-scheme: dark;
+  --paper: #11407a;        /* blueprint blue */
+  --paper-deep: #0b2f5c;   /* boards, tables */
+  --grid: rgba(160, 205, 255, 0.13);
+  --line: rgba(170, 210, 255, 0.28);
+  --ink: #eef5ff;
+  --ink-dim: #a9c3e2;
+  --accent: #f4c95d;       /* highlight, like the brass finial */
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "Barlow", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1320px; margin: 0 auto; display: grid; gap: 20px; }
+.eyebrow { font-family: var(--display); font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); font-size: 14px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(34px, 6vw, 60px); line-height: 1; margin: 4px 0 0; text-wrap: balance; letter-spacing: 0.01em; }
+h1 small { display: block; font-weight: 500; font-size: 0.42em; color: var(--ink-dim); letter-spacing: 0.06em; margin-top: 6px; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 22px; letter-spacing: 0.06em; text-transform: uppercase; margin: 0; }
+.masthead { display: grid; gap: 14px; }
+.facts { display: flex; flex-wrap: wrap; gap: 10px 28px; margin: 0; }
+.facts div { display: grid; }
+.facts dt { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); }
+.facts dd { margin: 0; font-family: var(--display); font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.facts dd span { font-size: 15px; color: var(--ink-dim); font-weight: 500; }
+.board { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+.panel { background: var(--paper-deep); border: 1px solid var(--line); border-radius: 6px; }
+.view { position: relative; overflow: hidden; }
+.view canvas { display: block; width: 100%; height: clamp(340px, 62vh, 720px); touch-action: none; cursor: grab; }
+.view canvas:active { cursor: grabbing; }
+.presets { position: absolute; top: 12px; left: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+button { font: 500 14px/1 var(--body); color: var(--ink); background: rgba(11, 47, 92, 0.85); border: 1px solid var(--line); border-radius: 4px; padding: 8px 11px; cursor: pointer; }
+button:hover { border-color: var(--ink-dim); }
+button[aria-pressed="true"] { background: var(--accent); color: #1c2433; border-color: var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hint { position: absolute; right: 12px; bottom: 10px; font-size: 12px; color: var(--ink-dim); background: rgba(11, 47, 92, 0.75); padding: 4px 8px; border-radius: 4px; }
+.progress { display: grid; gap: 8px; padding: 14px 16px 16px; border-top: 1px solid var(--line); }
+.progress-row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+.progress label { font-family: var(--display); font-size: 17px; font-weight: 600; letter-spacing: 0.04em; }
+.progress output { font-variant-numeric: tabular-nums; color: var(--ink-dim); }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.parts { padding: 16px; display: grid; gap: 12px; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); font-weight: 500; padding: 0 0 6px; }
+td { padding: 7px 0; border-top: 1px solid var(--line); vertical-align: middle; }
+td.num, th.num { text-align: right; }
+.swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 8px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35); }
+.asset { display: block; font-size: 11.5px; color: var(--ink-dim); margin-left: 22px; }
+tfoot td { font-weight: 600; }
+.stack { display: flex; height: 14px; border-radius: 3px; overflow: hidden; border: 1px solid var(--line); }
+.stack span { display: block; height: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--ink-dim); }
+.lower { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.sections, .compare { padding: 16px; display: grid; gap: 12px; }
+.sec-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.sec-list button { width: 100%; display: grid; grid-template-columns: 26px minmax(0, 1fr) 64px; gap: 10px; align-items: center; text-align: left; background: transparent; border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 7px 2px; }
+.sec-list button:hover { background: rgba(170, 210, 255, 0.07); }
+.sec-list button[aria-pressed="true"] { background: rgba(244, 201, 93, 0.16); color: var(--ink); }
+.sec-list .idx { font-family: var(--display); color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.sec-list .name { display: grid; gap: 4px; min-width: 0; }
+.sec-list .count { text-align: right; font-variant-numeric: tabular-nums; }
+.sec-list .stack { height: 7px; border: 0; background: rgba(0, 0, 0, 0.15); }
+.bars { display: grid; gap: 7px; }
+.bar { display: grid; grid-template-columns: 112px minmax(0, 1fr) 62px; gap: 10px; align-items: center; font-size: 14px; }
+.bar .track { height: 12px; background: rgba(0, 0, 0, 0.18); border-radius: 2px; overflow: hidden; }
+.bar .fill { height: 100%; background: var(--ink-dim); }
+.bar.nd .fill { background: var(--accent); }
+.bar.nd { font-weight: 600; }
+.bar .v { text-align: right; font-variant-numeric: tabular-nums; }
+.note { color: var(--ink-dim); font-size: 13.5px; max-width: 70ch; margin: 0; }
+.note strong { color: var(--ink); font-weight: 600; }
+a { color: var(--accent); }
+.source { color: var(--ink-dim); font-size: 13.5px; margin: 0; }
+@media (max-width: 980px) {
+  .board, .lower { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 480px) {
+  .bar { grid-template-columns: 92px minmax(0, 1fr) 54px; }
+  .facts dd { font-size: 22px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <div>
+      <div class="eyebrow">Blueprint · mod preview for Brick by Brick · beta 0.5</div>
+      <h1>Taj Mahal<small id="subtitle">from game bricks</small></h1>
+    </div>
+    <dl class="facts" id="facts"></dl>
+    <p class="source">Part of <a href="https://github.com/michel86ch-ui/brickbybrick-mod">Brick by Brick – Extra Buildings</a>, an unofficial fan mod, not made by the game's developers.</p>
+  </header>
+
+  <div class="board">
+    <section class="panel view" aria-label="3D view">
+      <canvas id="scene" aria-label="Taj Mahal made of game bricks, rotate with mouse or finger"></canvas>
+      <div class="presets" role="group" aria-label="View">
+        <button type="button" id="v-total" data-view="total" aria-pressed="true">Overall</button>
+        <button type="button" id="v-west" data-view="west" aria-pressed="false">Front</button>
+        <button type="button" id="v-side" data-view="side" aria-pressed="false">Side</button>
+        <button type="button" id="v-top" data-view="top" aria-pressed="false">Top</button>
+        <button type="button" id="scaffold-toggle" aria-pressed="true">Ramp</button>
+        <button type="button" id="inside-toggle" aria-pressed="true">Scaffold</button>
+        <button type="button" id="size-toggle" aria-pressed="false">2×1 red · 1×1 blue</button>
+      </div>
+      <div class="hint">Drag to rotate · wheel/pinch to zoom · right-click to pan</div>
+      <div class="progress">
+        <div class="progress-row">
+          <label for="build">Build progress</label>
+          <output id="build-out" for="build"></output>
+        </div>
+        <input type="range" id="build" min="0" step="1">
+      </div>
+    </section>
+
+    <aside class="panel parts" aria-labelledby="parts-h">
+      <h2 id="parts-h">Brick list</h2>
+      <table>
+        <thead><tr><th>Brick</th><th class="num">Count</th></tr></thead>
+        <tbody id="parts"></tbody>
+        <tfoot><tr><td>Total</td><td class="num" id="parts-total"></td></tr></tfoot>
+      </table>
+      <div class="stack" id="mix" aria-hidden="true"></div>
+      <div class="legend" id="mix-legend"></div>
+    </aside>
+  </div>
+
+  <div class="lower">
+    <section class="panel sections" aria-labelledby="sec-h">
+      <h2 id="sec-h">Construction sections</h2>
+      <p class="note">In building order. A click shows the build up to that section: the section itself in color, everything before it paler.</p>
+      <ul class="sec-list" id="sections"></ul>
+    </section>
+    <section class="panel compare" aria-labelledby="cmp-h">
+      <h2 id="cmp-h">For comparison</h2>
+      <div class="bars" id="compare"></div>
+      <p class="note" id="time-note"></p>
+      <p class="note">
+        <strong>Beta 0.5</strong> of a simplified Taj Mahal, about 1:3 of the original, drawn with the game's real brick shapes; in the game it is being built and tested now. <a href="https://github.com/michel86ch-ui/brickbybrick-mod/releases">Download</a> (Extra Buildings, world 3).
+        <strong>Platform</strong> of grey 4×2×2 blocks on a terracotta base course (red sandstone), with a 15° ramp in front for the game's mobile scaffold.
+        In the game the platform is a finished mesh made of the game's own blocks, like the Notre-Dame's plinth: the building starts on top of it.
+        <strong>Seven construction sites</strong> (the game takes at most 8,192 brick slots per site): ground floor walls, ground floor inside with the floor,
+        upper floor walls, upper floor inside with the inner dome, roof, dome, minarets. A block can only be set once every block it rests on is in place.
+        <strong>Mausoleum</strong> as in the original: a square with cut corners, on each side a high arched portal (pishtaq) with a deep recess, a door and a lattice window,
+        framed by a plum band (the calligraphy) with dots of blue and turquoise in the spandrels (the stone inlays), and two storeys of smaller arched niches beside it;
+        the cut corners carry blind niches. Walls are one 2×1 block thick, laid in running bond; the roof is one row of 2×1 blocks with merlons along the edge.
+        <strong>Inside</strong> a round central hall under a low inner dome, and two storeys round it: a square ring of pointed arcades on each storey carries the floor between them and the roof.
+        The outer onion dome stands on a drum that continues the hall wall, and a ring of blocks round its foot closes the roof. Nothing hangs in the air: every block rests on one below or on a supported neighbour in its row (checked by script).
+        Corners interlock: the 2×1 at a corner reaches into one wall and, one row up, into the other. The button "2×1 red · 1×1 blue" shows the bond.
+        Domes and minarets are laid in true rings: blocks at slight angles that overlap a little, as tried out in the game with the Notre-Dame's apse and spire.
+        Where a dome draws in faster than one block per row, extra inner rings fill the row below, so every block rests on one below.
+        <strong>Roof</strong>: four chhatris (small domes on eight columns), slim pinnacles at the portal frames and the corners, brass finials with a crescent.
+        <strong>Minarets</strong> at the corners of the platform with three balconies and a chhatri on top.
+        <strong>Scaffold</strong> (orange here, aluminium in the game; part of the mod, not bricks) stands only while the building is being built:
+        it goes once every construction site is complete, only the ramp stays. The game's mobile scaffold reaches the outer walls, the minarets and the chhatris from the platform.
+        A stair tower behind the building climbs from the platform onto the roof, with a bridge over the parapet; on the roof a stair winds round drum and dome
+        up to a platform with a bridge reaching in over the narrowing dome, from which the finial is within reach.
+        Inside, 1 m narrow: a stair tower in the hall, turned so its corners face the hall's arches, up to the inner dome; walkways round the hall on both storeys
+        in both corridors, joined by bridges through the arches. The upper storey is reached only this way, through the hall, because its niches outside are blind.
+        Drag the build progress back to see it.
+      </p>
+    </section>
+  </div>
+</div>
+
+<script id="nd-data" type="application/json">__DATA__</script>
+<script id="nd-meshes" type="application/json">__MESHES__</script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function () {
+  const D = JSON.parse(document.getElementById("nd-data").textContent);
+  const CELL = D.cell;
+  const fmt = new Intl.NumberFormat("en-US");
+  const fmt1 = new Intl.NumberFormat("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const css = getComputedStyle(document.documentElement);
+  const tok = (n) => css.getPropertyValue(n).trim();
+  const types = D.types;
+  const bricks = D.bricks;          // [type, x, y, z, yaw, section, pitch?]  (cm, degrees, Unity Euler order)
+  const nSec = D.sections.length;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---- Counts ----
+  const perType = types.map(() => 0);
+  const perSec = D.sections.map(() => types.map(() => 0));
+  for (const b of bricks) { perType[b[0]]++; perSec[b[5]][b[0]]++; }
+  const total = bricks.length;
+
+  // Material groups for the composition bar
+  const hex = (k) => types.find((t) => t.key === k).hex;
+  const groups = [
+    { name: "Marble walls and domes", keys: ["S2", "S1"], color: hex("S2") },
+    { name: "Calligraphy bands", keys: ["D2", "D1"], color: hex("D2") },
+    { name: "Inlays", keys: ["G2", "G1", "U2", "U1"], color: hex("G2") },
+    { name: "Finials", keys: ["gold1"], color: hex("gold1") },
+  ];
+  const keyCount = (k) => perType[types.findIndex((t) => t.key === k)] || 0;
+
+  // ---- Masthead ----
+  const s = D.stats;
+  const secPerBrick = 28400 / 13755;   // measured playthrough of the base game: 13,755 bricks in 7.9 h
+  const hours = total * secPerBrick / 3600;
+  document.getElementById("subtitle").textContent = "from " + fmt.format(total) + " game bricks";
+  const facts = [
+    ["Platform", fmt1.format(s.platform_m), "m"], ["Mausoleum", fmt1.format(s.building_m), "m"],
+    ["Roof", fmt1.format(s.roof_m), "m"], ["Dome", fmt1.format(s.dome_m), "m"],
+    ["Minarets", fmt1.format(s.minaret_m), "m"], ["Build time", "≈ " + Math.round(hours), "h"],
+  ];
+  document.getElementById("facts").innerHTML = facts.map(([k, v, u]) =>
+    `<div><dt>${k}</dt><dd>${v}${u ? ` <span>${u}</span>` : ""}</dd></div>`).join("");
+
+  // ---- Parts list ----
+  const order = types.map((t, i) => i).sort((a, b) => perType[b] - perType[a]);
+  document.getElementById("parts").innerHTML = order.filter((i) => perType[i] > 0).map((i) => {
+    const t = types[i];
+    return `<tr><td><span class="swatch" style="background:${t.hex}"></span>${t.name} · ${t.color}` +
+      `<span class="asset">${t.group} · ${t.asset}</span></td><td class="num">${fmt.format(perType[i])}</td></tr>`;
+  }).join("");
+  document.getElementById("parts-total").textContent = fmt.format(total);
+  document.getElementById("mix").innerHTML = groups.map((g) => {
+    const n = g.keys.reduce((a, k) => a + keyCount(k), 0);
+    return `<span style="width:${(100 * n / total).toFixed(2)}%;background:${g.color}" title="${g.name}: ${fmt.format(n)}"></span>`;
+  }).join("");
+  document.getElementById("mix-legend").innerHTML = groups.map((g) => {
+    const n = g.keys.reduce((a, k) => a + keyCount(k), 0);
+    return `<span><span class="swatch" style="background:${g.color}"></span>${g.name} ${Math.round(100 * n / total)} %</span>`;
+  }).join("");
+
+  // ---- Comparison (brick slots in the game, measured) ----
+  const cmp = [
+    ["Garage (mod)", 191], ["Round tower (mod)", 311], ["House", 879], ["Tower", 1077], ["Bakery", 1859], ["Pharmacy", 2854],
+    ["Library", 3576], ["Tavern", 3650], ["Factory", 4590], ["All 7 buildings", 18485], ["Notre-Dame (mod)", 26462], ["Taj Mahal", total],
+  ];
+  const cmax = Math.max(...cmp.map((c) => c[1]));
+  document.getElementById("compare").innerHTML = cmp.map(([n, v]) =>
+    `<div class="bar${n === "Taj Mahal" ? " nd" : ""}"><span>${n}</span><span class="track"><span class="fill" style="width:${(100 * v / cmax).toFixed(2)}%"></span></span><span class="v">${fmt.format(v)}</span></div>`).join("");
+  document.getElementById("time-note").textContent =
+    `Build time estimated from a playthrough of the base game (13,755 bricks in 7.9 h, about ${fmt1.format(secPerBrick)} s per brick with the magnet): ` +
+    `about ${Math.round(hours)} hours for ${fmt.format(total)} bricks.`;
+
+  // ---- Sections list ----
+  const secList = document.getElementById("sections");
+  secList.innerHTML = D.sections.map((name, i) => {
+    const n = perSec[i].reduce((a, b) => a + b, 0);
+    const bar = types.map((t, ti) => perSec[i][ti] ? `<span style="width:${(100 * perSec[i][ti] / n).toFixed(2)}%;background:${t.hex}"></span>` : "").join("");
+    return `<li><button type="button" id="sec-${i}" data-sec="${i}" aria-pressed="false">` +
+      `<span class="idx">${String(i + 1).padStart(2, "0")}</span>` +
+      `<span class="name"><span>${name}</span><span class="stack">${bar}</span></span>` +
+      `<span class="count">${fmt.format(n)}</span></button></li>`;
+  }).join("");
+
+  // ---- 3D ----
+  const canvas = document.getElementById("scene");
+  if (!window.THREE) {
+    canvas.replaceWith(Object.assign(document.createElement("p"), { className: "note", style: "padding:16px", textContent: "The 3D view could not be loaded (three.js is missing). The brick list and the sections still apply." }));
+    return;
+  }
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const scene = new THREE.Scene();
+  const paper = new THREE.Color(tok("--paper-deep"));
+  scene.background = paper;
+  const camera = new THREE.PerspectiveCamera(38, 2, 0.1, 600);
+  const controls = new THREE.OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.maxPolarAngle = Math.PI * 0.495;
+  controls.minDistance = 6;
+  controls.maxDistance = 160;
+
+  scene.add(new THREE.HemisphereLight(0xe8f2ff, 0x1d3f6b, 0.78));
+  const sun = new THREE.DirectionalLight(0xfff1dc, 0.85);
+  sun.position.set(-34, 58, -26);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 180 });
+  sun.shadow.bias = -0.0008;
+  scene.add(sun);
+
+  // Bounds and centering: piece centers in cm
+  let minX = 1e9, maxX = -1e9, minZ = 1e9, maxZ = -1e9, maxY = 0;
+  for (const b of bricks) {
+    minX = Math.min(minX, b[1]); maxX = Math.max(maxX, b[1]);
+    minZ = Math.min(minZ, b[3]); maxZ = Math.max(maxZ, b[3]);
+    maxY = Math.max(maxY, b[2]);
+  }
+  const offX = (minX + maxX) / 200, offZ = (minZ + maxZ) / 200;
+
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(140, 140), new THREE.MeshLambertMaterial({ color: new THREE.Color(tok("--paper")) }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+  const grid = new THREE.GridHelper(140, 140, 0x8fbaf0, 0x5f8fc8);
+  grid.material.opacity = 0.22;
+  grid.material.transparent = true;
+  grid.position.y = 0.002;
+  scene.add(grid);
+
+  // Instanced bricks per type with the game's own meshes (Unity coordinates -> reversed winding), ordered by section
+  const MESHES = JSON.parse(document.getElementById("nd-meshes").textContent);
+  const dummy = new THREE.Object3D();
+  const meshes = [];
+  const base = types.map((t) => new THREE.Color(t.hex));
+  // Check colours for the bond: every 2x1 block red, every 1x1 block blue (whatever its colour), the rest as it is
+  const sizeColor = types.map((t) => /^2×1 /.test(t.name) ? new THREE.Color("#d8453b")
+    : /^1×1 /.test(t.name) ? new THREE.Color("#3a74e0") : new THREE.Color(t.hex));
+  let sizeMode = false;
+  const colorOf = (ti) => (sizeMode ? sizeColor[ti] : base[ti]);
+  function geometryFor(key) {
+    const m = MESHES[key];
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(m.v, 3));
+    const idx = [];
+    for (let i = 0; i < m.f.length; i += 3) idx.push(m.f[i], m.f[i + 2], m.f[i + 1]);
+    g.setIndex(idx);
+    const flat = g.toNonIndexed();
+    flat.computeVertexNormals();
+    return flat;
+  }
+  types.forEach((t, ti) => {
+    const list = bricks.filter((b) => b[0] === ti).sort((a, b) => a[5] - b[5]);
+    if (!list.length || !MESHES[t.key]) return;
+    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    const mesh = new THREE.InstancedMesh(geometryFor(t.key), mat, list.length);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    const cum = new Array(nSec).fill(0);
+    list.forEach((b, i) => {
+      dummy.position.set(b[1] / 100 - offX, b[2] / 100, b[3] / 100 - offZ);
+      dummy.rotation.set((b[6] || 0) * Math.PI / 180, b[4] * Math.PI / 180, 0, "YXZ");
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+      mesh.setColorAt(i, colorOf(ti));
+      cum[b[5]]++;
+    });
+    for (let k = 1; k < nSec; k++) cum[k] += cum[k - 1];
+    meshes.push({ mesh, list, cum, ti });
+    scene.add(mesh);
+  });
+
+  // Platform: a finished mesh in the game (decor of the game's own 4x2x2 blocks), not bricks to build
+  (D.decor || []).length && types.forEach((t, ti) => {
+    const list = D.decor.filter((b) => b[0] === ti);
+    if (!list.length || !MESHES[t.key]) return;
+    const mesh = new THREE.InstancedMesh(geometryFor(t.key), new THREE.MeshLambertMaterial({ color: new THREE.Color(t.hex) }), list.length);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    list.forEach((b, i) => {
+      dummy.position.set(b[1] / 100 - offX, b[2] / 100, b[3] / 100 - offZ);
+      dummy.rotation.set(0, b[4] * Math.PI / 180, 0, "YXZ");
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    });
+    scene.add(mesh);
+  });
+
+  // Scaffold (part of the mod, not bricks)
+  const scaf = D.scaffold || [];
+  const scafMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xc2c7cc }), Math.max(1, scaf.length));
+  const deg = Math.PI / 180;
+  scaf.forEach((s, i) => {
+    dummy.position.set(s[0] / 100 - offX, s[1] / 100, s[2] / 100 - offZ);
+    dummy.rotation.set((s[6] || 0) * deg, (s[7] || 0) * deg, (s[8] || 0) * deg, "YXZ");   // braces: Unity Euler angles
+    dummy.scale.set(s[3] / 100, s[4] / 100, s[5] / 100);
+    dummy.updateMatrix();
+    scafMesh.setMatrixAt(i, dummy.matrix);
+  });
+  dummy.scale.set(1, 1, 1);
+  scafMesh.count = scaf.length;
+  scafMesh.castShadow = true;
+  scene.add(scafMesh);
+  const scafBtn = document.getElementById("scaffold-toggle");
+  scafBtn.addEventListener("click", () => {
+    scafMesh.visible = !scafMesh.visible;
+    scafBtn.setAttribute("aria-pressed", String(scafMesh.visible));
+  });
+  // Scaffold: the mod removes it once the building is complete (the ramp above stays)
+  const inner = D.tempScaffold || [];
+  const innerMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xe8892b }), Math.max(1, inner.length));
+  inner.forEach((s, i) => {
+    dummy.position.set(s[0] / 100 - offX, s[1] / 100, s[2] / 100 - offZ);
+    dummy.rotation.set((s[6] || 0) * deg, (s[7] || 0) * deg, (s[8] || 0) * deg, "YXZ");
+    dummy.scale.set(s[3] / 100, s[4] / 100, s[5] / 100);
+    dummy.updateMatrix();
+    innerMesh.setMatrixAt(i, dummy.matrix);
+  });
+  dummy.scale.set(1, 1, 1);
+  dummy.rotation.set(0, 0, 0);
+  innerMesh.count = inner.length;
+  innerMesh.castShadow = true;
+  scene.add(innerMesh);
+  const innerBtn = document.getElementById("inside-toggle");
+  innerBtn.addEventListener("click", () => {
+    innerMesh.visible = !innerMesh.visible;
+    innerBtn.setAttribute("aria-pressed", String(innerMesh.visible));
+  });
+
+  // 1.8 m figure for scale, in front of the platform beside the ramp
+  const fig = new THREE.Group();
+  const figMat = new THREE.MeshLambertMaterial({ color: 0xf4c95d });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 1.35, 16), figMat);
+  body.position.y = 0.675;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12), figMat);
+  head.position.y = 1.6;
+  fig.add(body, head);
+  fig.traverse((o) => { o.castShadow = true; });
+  fig.position.set(3.4, 0, minZ / 100 - offZ - 1.5);
+  scene.add(fig);
+
+  // ---- Build progress ----
+  const slider = document.getElementById("build");
+  const out = document.getElementById("build-out");
+  slider.max = String(nSec - 1);
+  slider.value = String(nSec - 1);
+  const dim = new THREE.Color();
+  function showUpTo(sec) {
+    const complete = sec >= nSec - 1;
+    for (const m of meshes) {
+      m.mesh.count = m.cum[sec];
+      for (let i = 0; i < m.mesh.count; i++) {
+        const own = m.list[i][5] === sec || complete;
+        if (own) m.mesh.setColorAt(i, colorOf(m.ti));
+        else { dim.copy(colorOf(m.ti)).lerp(paper, 0.45); m.mesh.setColorAt(i, dim); }
+      }
+      m.mesh.instanceColor.needsUpdate = true;
+    }
+    let done = 0;
+    for (let k = 0; k <= sec; k++) done += perSec[k].reduce((a, b) => a + b, 0);
+    out.textContent = complete
+      ? `complete · ${fmt.format(total)} bricks`
+      : `Section ${sec + 1} of ${nSec}: ${D.sections[sec]} · ${fmt.format(done)} of ${fmt.format(total)} bricks`;
+    secList.querySelectorAll("button").forEach((btn) => btn.setAttribute("aria-pressed", String(!complete && Number(btn.dataset.sec) === sec)));
+  }
+  slider.addEventListener("input", () => showUpTo(Number(slider.value)));
+  secList.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-sec]");
+    if (!btn) return;
+    slider.value = btn.dataset.sec;
+    showUpTo(Number(btn.dataset.sec));
+    document.querySelector(".view").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
+  });
+  showUpTo(nSec - 1);
+  const sizeBtn = document.getElementById("size-toggle");
+  sizeBtn.addEventListener("click", () => {
+    sizeMode = !sizeMode;
+    sizeBtn.setAttribute("aria-pressed", String(sizeMode));
+    showUpTo(Number(slider.value));
+  });
+
+  // ---- Camera presets ----
+  const H = maxY / 100;
+  const L = (maxZ - minZ) / 100;
+  const views = {
+    total: { pos: [-L * 0.95, H * 0.95, -L * 0.75], target: [0, H * 0.32, 0] },
+    west: { pos: [0, H * 0.42, -L * 1.25], target: [0, H * 0.4, 0] },
+    side: { pos: [L * 1.25, H * 0.38, 0], target: [0, H * 0.36, 0] },
+    top: { pos: [0.01, L * 1.45, 0], target: [0, 0, 0] },
+  };
+  let anim = null;
+  function goTo(name, instant) {
+    const v = views[name];
+    document.querySelectorAll(".presets button[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === name)));
+    const to = { pos: new THREE.Vector3(...v.pos), target: new THREE.Vector3(...v.target) };
+    if (instant || reduceMotion) {
+      camera.position.copy(to.pos); controls.target.copy(to.target); anim = null; return;
+    }
+    anim = { t: 0, from: { pos: camera.position.clone(), target: controls.target.clone() }, to };
+  }
+  document.querySelector(".presets").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-view]");
+    if (b) goTo(b.dataset.view);
+  });
+  controls.addEventListener("start", () => {
+    anim = null;
+    document.querySelectorAll(".presets button[data-view]").forEach((b) => b.setAttribute("aria-pressed", "false"));
+  });
+  goTo("total", true);
+
+  function resize() {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  new ResizeObserver(resize).observe(canvas);
+  resize();
+
+  (function loop() {
+    if (anim) {
+      anim.t = Math.min(1, anim.t + 0.035);
+      const e = anim.t < 0.5 ? 2 * anim.t * anim.t : 1 - Math.pow(-2 * anim.t + 2, 2) / 2;
+      camera.position.lerpVectors(anim.from.pos, anim.to.pos, e);
+      controls.target.lerpVectors(anim.from.target, anim.to.target, e);
+      if (anim.t >= 1) anim = null;
+    }
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(loop);
+  })();
+})();
+</script>
+</body>
+</html>
