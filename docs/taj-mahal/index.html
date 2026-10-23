@@ -323,6 +323,12 @@ a { color: var(--accent); }
   grid.position.y = 0.002;
   scene.add(grid);
 
+  // The game (Unity) counts in a left-handed frame, three.js in a right-handed one: the same numbers would show a mirror
+  // image. Everything built goes into a group mirrored at the x axis (three.js turns the faces round by itself).
+  const world = new THREE.Group();
+  world.scale.x = -1;
+  scene.add(world);
+
   // Instanced bricks per type with the game's own meshes (Unity coordinates -> reversed winding), ordered by section
   const MESHES = JSON.parse(document.getElementById("nd-meshes").textContent);
   const dummy = new THREE.Object3D();
@@ -362,7 +368,7 @@ a { color: var(--accent); }
     });
     for (let k = 1; k < nSec; k++) cum[k] += cum[k - 1];
     meshes.push({ mesh, list, cum, ti });
-    scene.add(mesh);
+    world.add(mesh);
   });
 
   // Platform: a finished mesh in the game (decor of the game's own 4x2x2 blocks), not bricks to build
@@ -378,7 +384,7 @@ a { color: var(--accent); }
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
     });
-    scene.add(mesh);
+    world.add(mesh);
   });
 
   // Scaffold (part of the mod, not bricks)
@@ -395,7 +401,7 @@ a { color: var(--accent); }
   dummy.scale.set(1, 1, 1);
   scafMesh.count = scaf.length;
   scafMesh.castShadow = true;
-  scene.add(scafMesh);
+  world.add(scafMesh);
   const scafBtn = document.getElementById("scaffold-toggle");
   scafBtn.addEventListener("click", () => {
     scafMesh.visible = !scafMesh.visible;
@@ -415,7 +421,7 @@ a { color: var(--accent); }
   dummy.rotation.set(0, 0, 0);
   innerMesh.count = inner.length;
   innerMesh.castShadow = true;
-  scene.add(innerMesh);
+  world.add(innerMesh);
   const innerBtn = document.getElementById("inside-toggle");
   innerBtn.addEventListener("click", () => {
     innerMesh.visible = !innerMesh.visible;
@@ -432,7 +438,7 @@ a { color: var(--accent); }
   fig.add(body, head);
   fig.traverse((o) => { o.castShadow = true; });
   fig.position.set(3.4, 0, minZ / 100 - offZ - 1.5);
-  scene.add(fig);
+  world.add(fig);
 
   // ---- Build progress ----
   const slider = document.getElementById("build");
