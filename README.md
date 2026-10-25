@@ -24,6 +24,7 @@ Overview page: **[michel86ch-ui.github.io/brickbybrick-mod](https://michel86ch-u
 | **[SkillPoints](https://github.com/michel86ch-ui/brickbybrick-mod-skillpoints)** | F10 in a world you host: +10 skill points | [skillpoints-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-skillpoints/raw/main/skillpoints-mod.zip) |
 | **[SkillModify](https://github.com/michel86ch-ui/brickbybrick-mod-skillmodify)** | the last skill levels carry 50 bricks and pull 50 with the magnet | [skillmodify-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-skillmodify/raw/main/skillmodify-mod.zip) |
 | **[Ladder](https://github.com/michel86ch-ui/brickbybrick-mod-ladder)** | an extension ladder to set up against a wall, climb and step off at the top | [ladder-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-ladder/raw/main/ladder-mod.zip) |
+| **[BuildHelper](https://github.com/michel86ch-ui/brickbybrick-mod-buildhelper)** | F8 shows the missing bricks through walls; F5 ghost hand places a brick you cannot reach, once every 10 minutes | [buildhelper-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-buildhelper/raw/main/buildhelper-mod.zip) |
 
 **Slots: the Taj Mahal is played in world slot 3, the Notre-Dame in world slot 4.** Each building lives in its own slot;
 start it with its button in the main menu and create a new save in that slot.
