@@ -566,13 +566,19 @@ for sx in (-1, 1):
     for sz in (-1, 1):
         minaret_top = minaret(sx * MIN_C, sz * MIN_C, "Minarets " + ("front" if sz < 0 else "back"))
 
-# Ramp for the game's mobile scaffold and for walking up: 15 degrees from the ground to the deck, in front
-RAMP_DEG, RAMP_W, RAMP_T = 15.0, 4.0, 0.08
+# Ramp for the game's mobile scaffold and for walking up, in front: its top surface meets the deck's edge, its lower end
+# reaches RAMP_SINK into the ground, so wherever the town's ground lies at its foot (lower than at the site's centre,
+# seen in the game) the scaffold drives onto it without a step. 20 degrees; the scaffold climbs up to 45 (measured).
+RAMP_DEG, RAMP_W, RAMP_T, RAMP_SINK = 20.0, 4.0, 0.08, 0.6
 ramp_h = PH * CELL
-ramp_len = ramp_h / math.sin(math.radians(RAMP_DEG))
-ramp_run = ramp_h / math.tan(math.radians(RAMP_DEG))
 z_edge = -PL * CELL
-scaffold.append((0.0, ramp_h / 2 - RAMP_T / 2, z_edge - ramp_run / 2, RAMP_W, RAMP_T, ramp_len + 0.1, -RAMP_DEG, 0.0, 0.0, 1.0))
+ra = math.radians(RAMP_DEG)
+ramp_len = (ramp_h + RAMP_SINK) / math.sin(ra)                 # along the top surface, deck edge to RAMP_SINK underground
+s_lo, s_hi = -(ramp_len + 0.1), 0.02                           # from the deck edge along the ramp (2 cm onto the deck)
+s_mid = (s_lo + s_hi) / 2
+scaffold.append((0.0, ramp_h + s_mid * math.sin(ra) - RAMP_T / 2 * math.cos(ra),
+                 z_edge + s_mid * math.cos(ra) + RAMP_T / 2 * math.sin(ra),
+                 RAMP_W, RAMP_T, s_hi - s_lo, -RAMP_DEG, 0.0, 0.0, 1.0))
 
 # Scaffold (visuals and colliders of the mod, no bricks), built like the Notre-Dame's: walking surfaces are the tops of
 # 6 cm planks on 5 cm ledgers, steps rise one cell (0.21 m) per 0.42 m, uprights 12 cm (no collider), and no two boxes

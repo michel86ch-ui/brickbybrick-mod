@@ -1,4 +1,4 @@
-# ExtraBuildings 1.1.0
+# ExtraBuildings 1.1.1
 
 Extra construction sites from a blueprint (JSON). Active only in a **mod-map session** (`ModMapEnabled = true`);
 every world choice then opens the mod world (default `singleplayer-4`). In a normal session the mod does nothing and
@@ -176,6 +176,8 @@ upright, no plank lies without support, and no two visible parts share a face pl
   joints where an odd wall between two corners had its 1x1 in the middle, the red scaffold too dominant, a gap in a
   tower lane, stairs turning on their steps, the mobile scaffold unable to climb the plinth. The skill tree data
   showed that the mobile scaffold opens only with the town's house, which the mod map does not have.
+- 1.1.1: the Taj Mahal's ramp at 20°, its lower end 0.6 m in the ground: the mobile scaffold got stuck at its lower end,
+  where the town's ground lies lower than at the site's centre.
 - 1.1.0 (with the Taj Mahal 1.0, first as beta 0.5): Taj Mahal in slot 3 next to the Notre-Dame in slot 4, a menu
   button per building, prerequisites across sites, fences cleared, a scaffold that goes once the building is complete;
   Notre-Dame with a stair tower inside. Seen in the showcase: size and place fine, fences gone, ramp missing (fixed:
