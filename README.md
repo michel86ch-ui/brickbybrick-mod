@@ -68,7 +68,7 @@ walls. **[More screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/sho
 | Notre-Dame: aluminium scaffold with landings at every stair corner, clerestory lanes, mobile scaffold unlocked and driving up ramps onto the plinth (1.0.0) | confirmed in game |
 | Notre-Dame: a complete build | confirmed in game (26,462 of 26,462 bricks, all five sites) |
 | Taj Mahal with about 40,000 bricks in seven construction sites, [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/taj-mahal/): shown finished in showcase mode, scaffold that goes once the building is complete (1.1.0) | showcase and building brick by brick confirmed in game, [screenshot](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/taj-mahal-1.jpg) |
-| Taj Mahal: ramp at 20°, its lower end 0.6 m in the ground, so the mobile scaffold drives onto it without a step (1.1.1) | not yet tested in game |
+| Taj Mahal: ramp at 20°, its lower end 0.6 m in the ground, so the mobile scaffold drives onto it without a step (1.1.1) | confirmed in game |
 
 ## Mod map: a separate world instead of the main world
 
