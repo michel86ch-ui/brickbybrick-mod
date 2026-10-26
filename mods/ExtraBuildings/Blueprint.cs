@@ -49,6 +49,9 @@ namespace ExtraBuildings
             new PartSpec { siteId = siteId, displayName = displayName, sections = Enumerable.Range(0, sections.Length).ToArray(), blueprintStand = blueprintStand },
         };
 
+        /// <summary>The game's 4x2x2 block in grey (long side along its local z) and in terracotta (along its local x).</summary>
+        private const string GreyBlock4 = "Bakery_Brick_2D1CAFD3", TerracottaBlock4 = "Factory_Brick_DB127285";
+
         public static Blueprint Load(string path)
         {
             Blueprint bp = JsonConvert.DeserializeObject<Blueprint>(File.ReadAllText(path));
@@ -56,6 +59,15 @@ namespace ExtraBuildings
                 || bp.bricks == null || bp.bricks.Length == 0 || bp.pile == null)
             {
                 throw new InvalidDataException("Incomplete blueprint: " + path);
+            }
+            if (bp.siteId == "tajmahal" && bp.decor != null && Plugin.TajPlatform.Value == "Terracotta")
+            {
+                // the platform is decor only (no slots), so its colour can change without touching a world
+                foreach (DecorSpec d in bp.decor.Where(d => d.def == GreyBlock4))
+                {
+                    d.def = TerracottaBlock4;
+                    d.yaw = (d.yaw + 90f) % 360f;
+                }
             }
             for (int i = 0; i < bp.bricks.Length; i++)
             {

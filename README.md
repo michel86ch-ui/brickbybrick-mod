@@ -14,13 +14,13 @@ Overview page: **[michel86ch-ui.github.io/brickbybrick-mod](https://michel86ch-u
 
 | Map | More | Download |
 |---|---|---|
-| **Notre-Dame**: 26,462 bricks in five construction sites, with a walkable scaffold. **World slot 4** | [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/) · [screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/) | [Extra Buildings 1.1.1](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest) |
+| **Notre-Dame**: 26,462 bricks in five construction sites, with a walkable scaffold. **World slot 4** | [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/) · [screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/) | [Extra Buildings 1.2.0](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest) |
 | Test buildings: garage (191 bricks), round tower (311 bricks) | pictures below | in the same ZIP |
-| **Taj Mahal** 1.0: about 40,000 bricks in seven construction sites, on a platform with four minarets. **World slot 3** | [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/taj-mahal/) · [screenshot](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/taj-mahal-1.jpg) | [Extra Buildings 1.1.1](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest) |
+| **Taj Mahal** 1.0: about 40,000 bricks in seven construction sites, on a platform with four minarets. **World slot 3** | [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/taj-mahal/) · [screenshot](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/taj-mahal-1.jpg) | [Extra Buildings 1.2.0](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest) |
 
 | Mod | What it does | Download |
 |---|---|---|
-| **[Extra Buildings](https://github.com/michel86ch-ui/brickbybrick-mod)** (this repository) | the maps above, each in a world of its own | [BrickByBrick-ExtraBuildings-1.1.1.zip](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest) (Notre-Dame + Taj Mahal) |
+| **[Extra Buildings](https://github.com/michel86ch-ui/brickbybrick-mod)** (this repository) | the maps above, each in a world of its own | [BrickByBrick-ExtraBuildings-1.2.0.zip](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest) (Notre-Dame + Taj Mahal) |
 | **[SkillPoints](https://github.com/michel86ch-ui/brickbybrick-mod-skillpoints)** | F10 in a world you host: +10 skill points | [skillpoints-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-skillpoints/raw/main/skillpoints-mod.zip) |
 | **[SkillModify](https://github.com/michel86ch-ui/brickbybrick-mod-skillmodify)** | the last skill levels carry 50 bricks and pull 50 with the magnet | [skillmodify-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-skillmodify/raw/main/skillmodify-mod.zip) |
 | **[Ladder](https://github.com/michel86ch-ui/brickbybrick-mod-ladder)** | an extension ladder to set up against a wall, climb and step off at the top | [ladder-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-ladder/raw/main/ladder-mod.zip) |
@@ -50,7 +50,7 @@ walls. **[More screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/sho
 
 [![Inside the nave: arcades of pointed arches carry the upper walls](docs/showcase/notre-dame-3.jpg)](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/)
 
-## Status (2026-10-25, version 1.1.1)
+## Status (2026-10-26, version 1.2.0)
 
 | Feature | Status |
 |---|---|
@@ -69,6 +69,9 @@ walls. **[More screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/sho
 | Notre-Dame: a complete build | confirmed in game (26,462 of 26,462 bricks, all five sites) |
 | Taj Mahal with about 40,000 bricks in seven construction sites, [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/taj-mahal/): shown finished in showcase mode, scaffold that goes once the building is complete (1.1.0) | showcase and building brick by brick confirmed in game, [screenshot](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/taj-mahal-1.jpg) |
 | Taj Mahal: ramp at 20°, its lower end 0.6 m in the ground, so the mobile scaffold drives onto it without a step (1.1.1) | confirmed in game |
+| Taj Mahal: full headroom (1.75 m, the player's height) on the hall's inner stair up to the dome; the top platform no longer covers the last two flights (1.2.0) | confirmed in game |
+| Taj Mahal: platform in terracotta (setting `Platform`, grey selectable), so the light placement holograms of the first bricks stand out (1.2.0) | confirmed in game |
+| Plinths and finished sections follow the game's own brick colours (Settings > Accessibility > Custom brick colors); the Taj Mahal's floor is the group Factory · Terracotta (1.2.0) | confirmed in game |
 
 ## Mod map: a separate world instead of the main world
 
@@ -86,12 +89,12 @@ whole game session:
 The main menu has a button top left: **Start Mod Map** in a normal session, **Back to normal worlds** in a mod-map
 session. It saves the mode and restarts the game through Steam.
 
-Placed bricks are saved with their world position. Do not move a site (`F9` or `X`/`Z` in the config) in a mod world
+Placed bricks are saved with their world position. Do not move a site (`MoveKey`, unbound by default, or `X`/`Z` in the config) in a mod world
 that already has bricks on it: they would stay behind at the old place. Delete the mod world first.
 
 ## Installation
 
-1. Download **[BrickByBrick-ExtraBuildings-1.1.1.zip](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest)**
+1. Download **[BrickByBrick-ExtraBuildings-1.2.0.zip](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest)**
    and unzip everything into the game folder, so that `winhttp.dll` sits next to `BrickByBrick.exe`
    (Steam: right-click the game > Manage > Browse local files).
 2. Start the game. Top left in the main menu: **Start Taj Mahal (world 3)** or **Start Notre-Dame (world 4)**. The
@@ -102,11 +105,16 @@ that already has bricks on it: they would stay behind at the old place. Delete t
 Back to your own worlds: **Back to normal worlds** in the main menu. A new mod world starts with 20 skill points
 (`StartSkillPoints` in `BepInEx\config\michel.brickbybrick.extrabuildings.cfg`, 0 = like the base game), and the
 mobile scaffold is unlocked (`UnlockScaffoldLift`): in the base game it comes with the town's house, which the mod
-map does not have. The ZIP contains BepInEx 5.4.23.5 (unmodified), the mod with its blueprints and a ready config.
+map does not have. The settings file is created at the first game start. The ZIP contains BepInEx 5.4.23.5
+(unmodified) and the mod with its blueprints; since 1.2.0 no settings file, so an update keeps yours.
 
-Updating from 1.0.0, 1.1.0 or the Taj Mahal beta: your worlds continue (1.0.0 only gains a stair tower inside the
-Notre-Dame's scaffold; 1.1.1 only makes the Taj Mahal's ramp steeper). A Notre-Dame world built with 0.6.0 or earlier does not fit the blueprint:
-start a new save in slot 4.
+Updating from 1.0.0, 1.1.x or the Taj Mahal beta: your worlds continue (1.0.0 only gains a stair tower inside the
+Notre-Dame's scaffold; 1.1.1 only makes the Taj Mahal's ramp steeper; 1.2.0 changes the Taj Mahal's scaffold and
+platform colour only). **If "Start Taj Mahal" says that slot 3 holds a normal save** although you built the Taj Mahal
+there: the settings file of the 1.1.x ZIP replaced the list of your mod worlds. Add it in
+`BepInEx\config\michel.brickbybrick.extrabuildings.cfg`: `ModWorlds = singleplayer-4,singleplayer-3`.
+
+A Notre-Dame world built with 0.6.0 or earlier does not fit the blueprint: start a new save in slot 4.
 
 Uninstall: delete `winhttp.dll`, `doorstop_config.ini`, `.doorstop_version`, `changelog.txt`,
 `ExtraBuildings-README.txt` and the `BepInEx` folder in the game folder. The game itself is not modified.

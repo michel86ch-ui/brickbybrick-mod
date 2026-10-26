@@ -19,7 +19,7 @@ namespace ExtraBuildings
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Guid = "michel.brickbybrick.extrabuildings";
-        public const string Version = "1.1.1";
+        public const string Version = "1.2.0";
         private const string SteamAppId = "5228920";
 
         internal static ManualLogSource Log;
@@ -40,6 +40,7 @@ namespace ExtraBuildings
         internal static ConfigEntry<float> Yaw;
         internal static ConfigEntry<KeyboardShortcut> MoveKey;
         internal static ConfigEntry<string> ModWorlds;
+        internal static ConfigEntry<string> TajPlatform;
 
         /// <summary>The buildings the main menu offers: each in its own world, at its own place in the town.</summary>
         private static readonly (string Name, string World, string Blueprint, float X, float Z, float Rotation)[] Presets =
@@ -81,8 +82,13 @@ namespace ExtraBuildings
             OriginX = Config.Bind("Site", "X", 0f, "World X coordinate of the footprint center (0 = town center).");
             OriginZ = Config.Bind("Site", "Z", 0f, "World Z coordinate of the footprint center (0 = town center).");
             Yaw = Config.Bind("Site", "Rotation", 0f, "Rotation in degrees.");
-            MoveKey = Config.Bind("Site", "MoveKey", new KeyboardShortcut(KeyCode.F9),
-                "Moves the site 4 m in front of you, door facing you. Takes effect at the next game start.");
+            MoveKey = Config.Bind("Site", "MoveKey", KeyboardShortcut.Empty,
+                "For designing only: moves the site 4 m in front of you, door facing you. Takes effect at the next game start. " +
+                "Never in a world with bricks placed: they stay where they are. Unbound by default.");
+            TajPlatform = Config.Bind("Taj Mahal", "Platform", "Terracotta", new ConfigDescription(
+                "Colour of the platform's 4x2x2 blocks. Terracotta: the light placement holograms of the first bricks stand out. " +
+                "Grey: the original look. Only the colour changes, worlds stay valid. Takes effect when the world is loaded.",
+                new AcceptableValueList<string>("Terracotta", "Grey")));
             new Harmony(Guid).PatchAll(typeof(Plugin).Assembly);
             Log.LogInfo(ModMapSession
                 ? $"ExtraBuildings {Version}: MOD-MAP session, world '{TargetSlot.Value}', blueprint '{BlueprintFile.Value}'."

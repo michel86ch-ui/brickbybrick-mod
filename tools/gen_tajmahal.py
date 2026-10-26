@@ -790,8 +790,8 @@ for s_idx in (3, 0, 1):                                    # its sides (not the 
         plank(temp_scaffold, NO_TURN, xm - MID_D + W_OUT / 2, xm + MID_D - W_OUT / 2, zm - W_OUT / 2, zm + W_OUT / 2, y_top_d)
     else:
         plank(temp_scaffold, NO_TURN, xm - W_OUT / 2, xm + W_OUT / 2, zm - MID_D + W_OUT / 2, zm + MID_D - W_OUT / 2, y_top_d)
-tube(temp_scaffold, NO_TURN, -B_OUT, B_OUT, -B_OUT, -B_OUT, y_top_d + RAIL)
-tube(temp_scaffold, NO_TURN, -B_OUT, B_OUT, B_OUT, B_OUT, y_top_d + RAIL)
+tube(temp_scaffold, NO_TURN, A_IN, B_OUT, -B_OUT, -B_OUT, y_top_d + RAIL)    # -z: only beside the arrival landing,
+tube(temp_scaffold, NO_TURN, -B_OUT, B_OUT, B_OUT, B_OUT, y_top_d + RAIL)     # not over the last flight's steps
 tube(temp_scaffold, NO_TURN, -B_OUT, -B_OUT, -B_OUT + 0.03, B_OUT - 0.03, y_top_d + RAIL)   # butting, not crossing
 tube(temp_scaffold, NO_TURN, B_OUT, B_OUT, -B_OUT + 0.03, B_OUT - 0.03, y_top_d + RAIL)
 # bridge in from the right-hand side: its tip 0.3 m from the dome rings at its height, on two struts from uprights
@@ -834,21 +834,37 @@ for u_ in (U_RING_G, U_UPPER, U_RING_U):
 assert AXIS[hall_corner(c_top_h, U_UPPER)] == (0, -1) and AXIS[hall_corner(c_top_h, U_RING_U)] == (0, 1)
 stair(temp_scaffold, TF_HALL, MID_H, W_IN, H_CORNERS, c_top_h, U_TOP_H, Y0)
 y_top_h = U_TOP_H * STEP_RISE
-for j in (1, 2):
+# The top platform covers only what has a full storey below: with 0.84 m per side, the last two flights and the landing
+# between them lie less than the player's 1.75 m (measured: capsule height) below it, so it leaves them open.
+for j in (1,):
     corner_square(temp_scaffold, TF_HALL, MID_H, W_IN, H_CORNERS[(c_top_h + j) % 4], y_top_h)
-for s_idx in (c_top_h, c_top_h + 1, c_top_h + 2):
+KEEP_OFF = 0.25                                            # player radius 0.15 m (measured) and some room
+for s_idx in (c_top_h, c_top_h + 1):
     (ax0, az0), (ax1, az1) = H_CORNERS[s_idx % 4], H_CORNERS[(s_idx + 1) % 4]
     xm, zm = (ax0 + ax1) / 2 * MID_H, (az0 + az1) / 2 * MID_H
+    # the second side ends short of the open corner: one storey less below it, where its flight steps onto the landing
+    cut = KEEP_OFF if s_idx == c_top_h + 1 else 0.0
     if ax0 != ax1:
-        plank(temp_scaffold, TF_HALL, xm - MID_H + W_IN / 2, xm + MID_H - W_IN / 2, zm - W_IN / 2, zm + W_IN / 2, y_top_h)
+        x0, x1 = xm - MID_H + W_IN / 2, xm + MID_H - W_IN / 2
+        x0, x1 = (x0, x1 - cut) if ax1 > ax0 else (x0 + cut, x1)
+        plank(temp_scaffold, TF_HALL, x0, x1, zm - W_IN / 2, zm + W_IN / 2, y_top_h)
     else:
-        plank(temp_scaffold, TF_HALL, xm - W_IN / 2, xm + W_IN / 2, zm - MID_H + W_IN / 2, zm + MID_H - W_IN / 2, y_top_h)
-plank(temp_scaffold, TF_HALL, -MID_H + W_IN / 2, MID_H - W_IN / 2, -MID_H + W_IN / 2, MID_H - W_IN / 2, y_top_h)  # the well
+        z0, z1 = zm - MID_H + W_IN / 2, zm + MID_H - W_IN / 2
+        z0, z1 = (z0, z1 - cut) if az1 > az0 else (z0 + cut, z1)
+        plank(temp_scaffold, TF_HALL, xm - W_IN / 2, xm + W_IN / 2, z0, z1, y_top_h)
+well = [-MID_H + W_IN / 2, MID_H - W_IN / 2, -MID_H + W_IN / 2, MID_H - W_IN / 2]   # x0, x1, z0, z1
+for d in (-1, 2):                                          # the well keeps off the last two flights' inner edges
+    (ax0, az0), (ax1, az1) = H_CORNERS[(c_top_h + d) % 4], H_CORNERS[(c_top_h + d + 1) % 4]
+    if ax0 == ax1:
+        well[0 if ax0 < 0 else 1] -= ax0 * KEEP_OFF
+    else:
+        well[2 if az0 < 0 else 3] -= az0 * KEEP_OFF
+plank(temp_scaffold, TF_HALL, *well, y_top_h)                                  # the well
 bh = MID_H + W_IN / 2
-last_side = {H_CORNERS[(c_top_h - 1) % 4], H_CORNERS[c_top_h]}
+open_sides = [{H_CORNERS[(c_top_h + d) % 4], H_CORNERS[(c_top_h + d + 1) % 4]} for d in (-1, 2)]
 for (c0, c1) in (((-1, -1), (1, -1)), ((1, -1), (1, 1)), ((1, 1), (-1, 1)), ((-1, 1), (-1, -1))):
-    if {c0, c1} == last_side:
-        continue                                           # over the last flight: the rail would be at head height
+    if {c0, c1} in open_sides:
+        continue                                           # over the last two flights: no platform there, no rail
     if c0[0] != c1[0]:
         tube(temp_scaffold, TF_HALL, -bh, bh, c0[1] * bh, c0[1] * bh, y_top_h + RAIL)
     else:

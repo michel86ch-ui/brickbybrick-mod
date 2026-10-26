@@ -8,9 +8,11 @@ using MultiplayerTemplate.BrickWorld;
 using MultiplayerTemplate.Construction;
 using MultiplayerTemplate.Core.Application;
 using MultiplayerTemplate.Core.Items;
+using MultiplayerTemplate.Core.Settings;
 using MultiplayerTemplate.Game.Items;
 using MultiplayerTemplate.Game.Placement;
 using MultiplayerTemplate.Game.Scenes;
+using Sisus.Init;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
@@ -553,7 +555,8 @@ namespace ExtraBuildings
         {
             var groups = new Dictionary<Material, List<CombineInstance>>();
             var order = new List<Material>();
-            var loose = new List<(BrickVisual vis, Matrix4x4 m)>();
+            var colorOf = new Dictionary<Material, BrickColorGroup>();
+            var loose = new List<(BrickVisual vis, Matrix4x4 m, BrickColorGroup color)>();
             foreach ((string def, float[] p, Quaternion r) in items)
             {
                 BrickVisual vis = visuals[recByDef[def].visualIndex];
@@ -561,10 +564,11 @@ namespace ExtraBuildings
                 {
                     continue;
                 }
+                BrickColorGroup color = recByDef[def].definition != null ? recByDef[def].definition.ColorGroup : null;
                 Matrix4x4 m = Matrix4x4.TRS(new Vector3(p[0], p[1], p[2]), r, Vector3.one) * vis.localMatrix;
                 if (!vis.mesh.isReadable)
                 {
-                    loose.Add((vis, m));
+                    loose.Add((vis, m, color));
                     continue;
                 }
                 for (int s = 0; s < vis.mesh.subMeshCount; s++)
@@ -574,6 +578,10 @@ namespace ExtraBuildings
                     {
                         groups[mat] = list = new List<CombineInstance>();
                         order.Add(mat);
+                    }
+                    if (color != null && color.Includes(mat) && !colorOf.ContainsKey(mat))
+                    {
+                        colorOf[mat] = color;
                     }
                     list.Add(new CombineInstance { mesh = vis.mesh, subMeshIndex = s, transform = m });
                 }
@@ -601,11 +609,13 @@ namespace ExtraBuildings
                     Object.Destroy(part.mesh);
                 }
                 go.AddComponent<MeshFilter>().sharedMesh = mesh;
-                go.AddComponent<MeshRenderer>().sharedMaterials = order.ToArray();
+                MeshRenderer renderer = go.AddComponent<MeshRenderer>();
+                renderer.sharedMaterials = order.ToArray();
+                FollowPalette(renderer, order, mat => colorOf.TryGetValue(mat, out BrickColorGroup c) ? c : null);
             }
             if (allowChildren)
             {
-                foreach ((BrickVisual vis, Matrix4x4 m) in loose)
+                foreach ((BrickVisual vis, Matrix4x4 m, BrickColorGroup color) in loose)
                 {
                     var child = new GameObject("Brick");
                     child.transform.SetParent(go.transform, false);
@@ -613,7 +623,9 @@ namespace ExtraBuildings
                     child.transform.localRotation = m.rotation;
                     child.transform.localScale = m.lossyScale;
                     child.AddComponent<MeshFilter>().sharedMesh = vis.mesh;
-                    child.AddComponent<MeshRenderer>().sharedMaterials = vis.materials;
+                    MeshRenderer renderer = child.AddComponent<MeshRenderer>();
+                    renderer.sharedMaterials = vis.materials;
+                    FollowPalette(renderer, vis.materials, mat => color != null && color.Includes(mat) ? color : null);
                 }
             }
             if (loose.Count > 0)
@@ -621,6 +633,48 @@ namespace ExtraBuildings
                 Plugin.Log.LogWarning($"{name}: {loose.Count} bricks with an unreadable mesh {(allowChildren ? "attached individually" : "skipped")}.");
             }
             return go;
+        }
+
+        private static readonly AccessTools.FieldRef<BrickColorRenderer, BrickColorRenderer.Target[]> ColorTargets =
+            AccessTools.FieldRefAccess<BrickColorRenderer, BrickColorRenderer.Target[]>("targets");
+        private static readonly AccessTools.FieldRef<BrickColorRenderer, IBrickColorPalette> ColorPalette =
+            AccessTools.FieldRefAccess<BrickColorRenderer, IBrickColorPalette>("palette");
+
+        /// <summary>
+        /// The game recolours bricks per colour group (settings, accessibility: own brick colours), each group by the
+        /// brick type and only on the materials the group includes. A combined mesh gets the component the game puts on
+        /// single bricks, so it follows the chosen colours like the game's own bricks.
+        /// </summary>
+        private static void FollowPalette(Renderer renderer, IList<Material> materials, Func<Material, BrickColorGroup> groupOf)
+        {
+            var targets = new List<BrickColorRenderer.Target>();
+            for (int i = 0; i < materials.Count; i++)
+            {
+                BrickColorGroup group = groupOf(materials[i]);
+                if (group != null)
+                {
+                    targets.Add(new BrickColorRenderer.Target { renderer = renderer, materialIndex = i, group = group });
+                }
+            }
+            if (targets.Count == 0)
+            {
+                return;
+            }
+            var colors = renderer.gameObject.AddComponent<BrickColorRenderer>();
+            ColorTargets(colors) = targets.ToArray();
+            if (ColorPalette(colors) == null)
+            {
+                try
+                {
+                    ((IInitializable<IBrickColorPalette>)colors).Init(Service.Get<IBrickColorPalette>());
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.LogWarning($"{renderer.name}: does not follow the own brick colours ({e.Message}).");
+                    return;
+                }
+            }
+            colors.Apply();
         }
 
         /// <summary>The town's fences and small props (material M_Map_04, measured in the scene data) carry this material.</summary>
