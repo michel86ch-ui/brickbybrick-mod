@@ -50,7 +50,7 @@ walls. **[More screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/sho
 
 [![Inside the nave: arcades of pointed arches carry the upper walls](docs/showcase/notre-dame-3.jpg)](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/)
 
-## Status (2026-10-26, version 1.2.0)
+## Status (2026-10-27, version 1.2.0)
 
 | Feature | Status |
 |---|---|
@@ -67,7 +67,8 @@ walls. **[More screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/sho
 | Notre-Dame: start skill points for a new mod world (0.6.0) | confirmed in game |
 | Notre-Dame: aluminium scaffold with landings at every stair corner, clerestory lanes, mobile scaffold unlocked and driving up ramps onto the plinth (1.0.0) | confirmed in game |
 | Notre-Dame: a complete build | confirmed in game (26,462 of 26,462 bricks, all five sites) |
-| Taj Mahal with about 40,000 bricks in seven construction sites, [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/taj-mahal/): shown finished in showcase mode, scaffold that goes once the building is complete (1.1.0) | showcase and building brick by brick confirmed in game, [screenshot](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/taj-mahal-1.jpg) |
+| Taj Mahal with about 40,000 bricks in seven construction sites, [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/taj-mahal/): shown finished in showcase mode, scaffold that goes once the building is complete (1.1.0) | confirmed in game, [screenshot](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/taj-mahal-1.jpg) |
+| Taj Mahal: a complete build, and the temporary scaffold is gone afterwards | confirmed in game (40,262 of 40,262 bricks, all seven sites, 16:16:46, 1,263 magnet uses; inside and outside free of scaffolding, only the ramp stays) |
 | Taj Mahal: ramp at 20°, its lower end 0.6 m in the ground, so the mobile scaffold drives onto it without a step (1.1.1) | confirmed in game |
 | Taj Mahal: full headroom (1.75 m, the player's height) on the hall's inner stair up to the dome; the top platform no longer covers the last two flights (1.2.0) | confirmed in game |
 | Taj Mahal: platform in terracotta (setting `Platform`, grey selectable), so the light placement holograms of the first bricks stand out (1.2.0) | confirmed in game |
