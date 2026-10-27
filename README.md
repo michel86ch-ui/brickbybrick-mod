@@ -14,9 +14,9 @@ Overview page: **[michel86ch-ui.github.io/brickbybrick-mod](https://michel86ch-u
 
 | Map | More | Download |
 |---|---|---|
-| **Notre-Dame**: 26,462 bricks in five construction sites, with a walkable scaffold. **World slot 4** | [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/) · [screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/) | [Extra Buildings 1.2.0](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest) |
+| **Notre-Dame**: 26,462 bricks in five construction sites, with a walkable scaffold. The first design, with the teething troubles of a first attempt. **World slot 4** | [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/notre-dame/) · [screenshots](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/) | [Extra Buildings 1.2.0](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest) |
 | Test buildings: garage (191 bricks), round tower (311 bricks) | pictures below | in the same ZIP |
-| **Taj Mahal** 1.0: about 40,000 bricks in seven construction sites, on a platform with four minarets. **World slot 3** | [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/taj-mahal/) · [screenshot](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/taj-mahal-1.jpg) | [Extra Buildings 1.2.0](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest) |
+| **Taj Mahal** 1.0 — **recommended**: 40,262 bricks in seven construction sites, on a platform with four minarets. The better build of the two. **World slot 3** | [3D preview](https://michel86ch-ui.github.io/brickbybrick-mod/taj-mahal/) · [screenshot](https://michel86ch-ui.github.io/brickbybrick-mod/showcase/taj-mahal-1.jpg) | [Extra Buildings 1.2.0](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest) |
 
 | Mod | What it does | Download |
 |---|---|---|
@@ -25,6 +25,22 @@ Overview page: **[michel86ch-ui.github.io/brickbybrick-mod](https://michel86ch-u
 | **[SkillModify](https://github.com/michel86ch-ui/brickbybrick-mod-skillmodify)** | the last skill levels carry 50 bricks and pull 50 with the magnet | [skillmodify-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-skillmodify/raw/main/skillmodify-mod.zip) |
 | **[Ladder](https://github.com/michel86ch-ui/brickbybrick-mod-ladder)** | an extension ladder to set up against a wall, climb and step off at the top | [ladder-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-ladder/raw/main/ladder-mod.zip) |
 | **[BuildHelper](https://github.com/michel86ch-ui/brickbybrick-mod-buildhelper)** | F8 shows the missing bricks through walls; F5 ghost hand places a brick you cannot reach, once every 10 minutes | [buildhelper-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-buildhelper/raw/main/buildhelper-mod.zip) |
+
+### Which one to build first
+
+**Start with the Taj Mahal.** It is the newer map and the better one.
+
+The Notre-Dame came first, and it carries what a first attempt carries. Its brickwork was frozen early, so the
+bond is not as clean as it could be, and its scaffold stays standing once the building is done. The Taj Mahal was
+generated afterwards with everything learned from it: the bond is laid course by course with a cost function, so
+joints rarely sit on top of each other and the corners interlock; every brick is checked to be carried by the ones
+below and to not overlap another; the inner scaffold is narrow and **disappears the moment the building is
+finished**, leaving only the ramp; the stair up to the dome has full headroom.
+
+And it plays that way too: a full run takes about 16 hours of laying bricks, and it goes well all the way through.
+
+None of this makes the Notre-Dame a bad build — it is still 26,462 bricks and the showcase looks the part. It is
+simply the older design, and it is the one that will show its age first.
 
 **Slots: the Taj Mahal is played in world slot 3, the Notre-Dame in world slot 4.** Each building lives in its own slot;
 start it with its button in the main menu and create a new save in that slot.
