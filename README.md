@@ -21,10 +21,10 @@ Overview page: **[michel86ch-ui.github.io/brickbybrick-mod](https://michel86ch-u
 | Mod | What it does | Download |
 |---|---|---|
 | **[Extra Buildings](https://github.com/michel86ch-ui/brickbybrick-mod)** (this repository) | the maps above, each in a world of its own | [BrickByBrick-ExtraBuildings-1.2.0.zip](https://github.com/michel86ch-ui/brickbybrick-mod/releases/latest) (Notre-Dame + Taj Mahal) |
-| **[SkillPoints](https://github.com/michel86ch-ui/brickbybrick-mod-skillpoints)** | F10 in a world you host: +10 skill points | [skillpoints-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-skillpoints/raw/main/skillpoints-mod.zip) |
-| **[SkillModify](https://github.com/michel86ch-ui/brickbybrick-mod-skillmodify)** | the last skill levels carry 50 bricks and pull 50 with the magnet | [skillmodify-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-skillmodify/raw/main/skillmodify-mod.zip) |
-| **[Ladder](https://github.com/michel86ch-ui/brickbybrick-mod-ladder)** | an extension ladder to set up against a wall, climb and step off at the top | [ladder-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-ladder/raw/main/ladder-mod.zip) |
-| **[BuildHelper](https://github.com/michel86ch-ui/brickbybrick-mod-buildhelper)** | F8 shows the missing bricks through walls; F5 ghost hand places a brick you cannot reach, once every 10 minutes | [buildhelper-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-buildhelper/raw/main/buildhelper-mod.zip) |
+| **[SkillPoints](https://github.com/michel86ch-ui/brickbybrick-mod-skillpoints)** | F10 in a world you host: +10 skill points | [skillpoints-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-skillpoints/raw/main/skillpoints-mod.zip) (tested 9 Nov 2026) |
+| **[SkillModify](https://github.com/michel86ch-ui/brickbybrick-mod-skillmodify)** | the last skill levels carry 50 bricks and pull 50 with the magnet | [skillmodify-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-skillmodify/raw/main/skillmodify-mod.zip) (tested 9 Nov 2026) |
+| **[Ladder](https://github.com/michel86ch-ui/brickbybrick-mod-ladder)** | an extension ladder to set up against a wall, climb and step off at the top | [ladder-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-ladder/raw/main/ladder-mod.zip) (tested 9 Nov 2026) |
+| **[BuildHelper](https://github.com/michel86ch-ui/brickbybrick-mod-buildhelper)** | F8 shows the missing bricks through walls; F5 ghost hand places a brick you cannot reach, once every 10 minutes | [buildhelper-mod.zip](https://github.com/michel86ch-ui/brickbybrick-mod-buildhelper/raw/main/buildhelper-mod.zip) (tested 9 Nov 2026) |
 
 ### Which one to build first
 
